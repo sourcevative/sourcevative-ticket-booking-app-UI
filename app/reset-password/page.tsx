@@ -1,36 +1,62 @@
-
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { authService } from "@/src/services/auth.services";
 
-export default function LoginPage() {
+export default function ResetPasswordPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [show, setShow] = useState(false);
+  const [confirmShow, setConfirmShow] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const userIdFromUrl = searchParams.get("user_id") || "";
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setStatus(null);
     setLoading(true);
 
     const form = new FormData(e.currentTarget);
-    const email = String(form.get("email") || "").trim();
-    const phone = String(form.get("phone") || "").trim();
     const password = String(form.get("password") || "");
+    const confirm = String(form.get("confirmPassword") || "");
+
+    if (!userIdFromUrl) {
+      setError("Invalid reset link. Please request a new password reset.");
+      setLoading(false);
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      setLoading(false);
+      return;
+    }
 
     try {
-      await authService.login({ email, phone, password });
-      router.push("/dashboard");
+      await authService.resetPasswordDirect({
+        user_id: userIdFromUrl,
+        new_password: password,
+      });
+      setStatus("Your password has been updated successfully.");
+      setTimeout(() => router.push("/login"), 1500);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Login failed. Please double-check your details and try again."
+          : "We could not reset your password. Please try again."
       );
     } finally {
       setLoading(false);
@@ -44,21 +70,21 @@ export default function LoginPage() {
         <div className="rounded-3xl bg-white/80 border border-emerald-100 shadow-lg shadow-emerald-100/60 px-8 py-10 flex flex-col justify-between">
           <div className="space-y-4">
             <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-100">
-              Welcome back
+              Secure reset
             </span>
             <div className="space-y-2">
               <h2 className="text-3xl font-semibold text-emerald-950">
-                Sign in to your booking workspace
+                Set a new password
               </h2>
               <p className="text-sm leading-relaxed text-emerald-900/70">
-                Access your upcoming farm visits, manage bookings, and keep
-                your family adventures organized in one place.
+                Use a unique password to keep your farm booking workspace safe
+                for you and your family.
               </p>
             </div>
           </div>
           <div className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs text-emerald-900/80">
             <p className="font-semibold mb-1">Tip</p>
-            <p>You can login with either your email or your registered phone.</p>
+            <p>Combine letters, numbers and symbols for a stronger password.</p>
           </div>
         </div>
 
@@ -67,45 +93,22 @@ export default function LoginPage() {
           <form onSubmit={onSubmit} className="space-y-6">
             <div className="space-y-1">
               <h1 className="text-2xl font-semibold text-emerald-950">
-                Login
+                Update password
               </h1>
               <p className="text-xs text-emerald-900/70">
-                Enter your details to continue
+                Enter your new password to finish resetting
               </p>
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-emerald-900/80 mb-1.5">
-                  Email
-                </label>
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="Email"
-                  className="input w-full"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-emerald-900/80 mb-1.5">
-                  Phone number
-                </label>
-                <input
-                  name="phone"
-                  placeholder="Phone number"
-                  className="input w-full"
-                />
-              </div>
-
               <div className="relative">
                 <label className="block text-xs font-medium text-emerald-900/80 mb-1.5">
-                  Password
+                  New password
                 </label>
                 <input
                   name="password"
                   type={show ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder="Enter new password"
                   className="input pr-10 w-full"
                   required
                 />
@@ -117,6 +120,26 @@ export default function LoginPage() {
                   {show ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+
+              <div className="relative">
+                <label className="block text-xs font-medium text-emerald-900/80 mb-1.5">
+                  Confirm password
+                </label>
+                <input
+                  name="confirmPassword"
+                  type={confirmShow ? "text" : "password"}
+                  placeholder="Re-enter new password"
+                  className="input pr-10 w-full"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setConfirmShow(!confirmShow)}
+                  className="absolute right-3 top-9 text-emerald-500 hover:text-emerald-700 transition-colors"
+                >
+                  {confirmShow ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -125,30 +148,28 @@ export default function LoginPage() {
               </div>
             )}
 
+            {status && (
+              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                <p className="text-sm text-emerald-700">{status}</p>
+              </div>
+            )}
+
             <div className="space-y-3">
               <button
                 disabled={loading}
                 className="w-full rounded-full bg-emerald-700 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-700/30 transition hover:bg-emerald-800 hover:shadow-lg hover:shadow-emerald-700/40 active:translate-y-px disabled:opacity-70"
               >
-                {loading ? "Signing in..." : "Login"}
+                {loading ? "Updating password..." : "Update password"}
               </button>
-              <div className="flex items-center justify-between text-xs text-emerald-900/80">
+              <p className="text-center text-xs text-emerald-900/70">
+                Done here?{" "}
                 <Link
-                  href="/forgot-pass"
-                  className="hover:text-emerald-800 hover:underline"
+                  href="/login"
+                  className="font-semibold text-emerald-800 hover:underline"
                 >
-                  Forgot password?
+                  Back to login
                 </Link>
-                <p>
-                  New here?{" "}
-                  <Link
-                    href="/signup"
-                    className="font-semibold text-emerald-800 hover:underline"
-                  >
-                    Create account
-                  </Link>
-                </p>
-              </div>
+              </p>
             </div>
           </form>
         </div>
@@ -156,4 +177,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
 
