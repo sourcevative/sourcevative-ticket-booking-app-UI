@@ -1,3 +1,4 @@
+
 import { api } from "./api";
 
 export interface SignupPayload {
@@ -17,9 +18,10 @@ export interface ForgotPasswordPayload {
   login: string; // email OR phone
 }
 
+// ✅ FIXED
 export interface ResetPasswordPayload {
-  accessToken: string;
-  newPassword: string;
+  token: string;
+  new_password: string;
 }
 
 export interface ResetPasswordDirectPayload {
@@ -53,21 +55,21 @@ export const authService = {
   },
 
   forgotPassword: (payload: ForgotPasswordPayload) =>
-    api.post<{ status: string; user_id: string }>("/forgot-password", {
+    api.post<{ status: string; message: string }>("/forgot-password", {
       login: payload.login,
     }),
 
+  // ✅ CORRECT RESET (token based)
   resetPassword: (payload: ResetPasswordPayload) =>
     api.post<{ status: string; message: string }>("/reset-password", {
-      access_token: payload.accessToken,
-      new_password: payload.newPassword,
+      token: payload.token,
+      new_password: payload.new_password,
     }),
 
+  // ❌ KEEP but DO NOT USE in UI
   resetPasswordDirect: (payload: ResetPasswordDirectPayload) =>
     api.post<{ status: string; message: string }>("/reset-password-direct", {
       user_id: payload.user_id,
       new_password: payload.new_password,
     }),
 };
-
-

@@ -4,7 +4,6 @@ const API_BASE_URL =
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 interface ApiOptions extends RequestInit {
-  /** Relative path, e.g. `/login` */
   path: string;
   method?: HttpMethod;
 }
@@ -18,6 +17,7 @@ async function apiRequest<TResponse = unknown, TBody = unknown>({
 }: ApiOptions & { body?: TBody }): Promise<TResponse> {
   const url = `${API_BASE_URL}${path}`;
 
+  // ✅ CORRECT INIT (credentials REMOVED)
   const init: RequestInit = {
     method,
     headers: {
@@ -25,61 +25,131 @@ async function apiRequest<TResponse = unknown, TBody = unknown>({
       ...(headers || {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
-    credentials: "include",
     ...rest,
   };
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(`API Request [${method}]`, { url, body });
+  }
 
   let res: Response;
   try {
     res = await fetch(url, init);
   } catch (error) {
-    // Handle network errors, CORS issues, or connection failures
-    const errorMessage =
+    const message =
       error instanceof Error
         ? error.message
-        : "Network error occurred. Please check your connection and try again.";
-    
-    // Provide more specific error messages for common issues
-    if (errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError")) {
-      throw new Error(
-        "Unable to connect to the server. Please ensure the API server is running and accessible."
-      );
-    }
-    
-    throw new Error(errorMessage);
+        : "Network error. Please check your connection.";
+
+    throw new Error(
+      message.includes("Failed to fetch")
+        ? "Unable to connect to server. Is backend running on port 8000?"
+        : message
+    );
   }
 
   if (!res.ok) {
     let message = "Something went wrong. Please try again.";
+
     try {
-      const data = await res.json();
-      message =
-        data?.detail ||
-        data?.message ||
-        data?.error ||
-        (typeof data === "string" ? data : message);
+      const text = await res.text();
+
+      if (text) {
+        try {
+          const data = JSON.parse(text);
+
+          if (Array.isArray(data?.detail)) {
+            message = data.detail
+              .map((e: any) => e?.msg || "Validation error")
+              .join(", ");
+          } else {
+            message =
+              data?.detail ||
+              data?.message ||
+              data?.error ||
+              message;
+          }
+        } catch {
+          message = text;
+        }
+      } else {
+        if (res.status === 400) message = "Invalid request data.";
+        if (res.status === 401) message = "Invalid login credentials.";
+        if (res.status === 403) message = "Access denied.";
+        if (res.status === 500) message = "Server error. Try again later.";
+      }
     } catch {
-      // ignore JSON parse errors and use default message
+      message = `Request failed with status ${res.status}`;
     }
+
     throw new Error(message);
   }
 
-  // Try to parse JSON, but allow empty responses
   try {
     return (await res.json()) as TResponse;
   } catch {
-    return undefined as unknown as TResponse;
+    return undefined as TResponse;
   }
 }
 
 export const api = {
+  get: <TResponse = unknown>(
+    path: string,
+    init?: Omit<ApiOptions, "path" | "method">
+  ) =>
+    apiRequest<TResponse>({
+      path,
+      method: "GET",
+      ...(init || {}),
+    }),
+
   post: <TResponse = unknown, TBody = unknown>(
     path: string,
     body: TBody,
     init?: Omit<ApiOptions, "path" | "method" | "body">
-  ) => apiRequest<TResponse, TBody>({ path, method: "POST", body, ...(init || {}) }),
+  ) =>
+    apiRequest<TResponse, TBody>({
+      path,
+      method: "POST",
+      body,
+      ...(init || {}),
+    }),
+
+  put: <TResponse = unknown, TBody = unknown>(
+    path: string,
+    body: TBody,
+    init?: Omit<ApiOptions, "path" | "method" | "body">
+  ) =>
+    apiRequest<TResponse, TBody>({
+      path,
+      method: "PUT",
+      body,
+      ...(init || {}),
+    }),
+
+  patch: <TResponse = unknown, TBody = unknown>(
+    path: string,
+    body: TBody,
+    init?: Omit<ApiOptions, "path" | "method" | "body">
+  ) =>
+    apiRequest<TResponse, TBody>({
+      path,
+      method: "PATCH",
+      body,
+      ...(init || {}),
+    }),
+
+  delete: <TResponse = unknown, TBody = unknown>(
+    path: string,
+    body?: TBody,
+    init?: Omit<ApiOptions, "path" | "method" | "body">
+  ) =>
+    apiRequest<TResponse, TBody>({
+      path,
+      method: "DELETE",
+      body,
+      ...(init || {}),
+    }),
 };
 
 export type ApiClient = typeof api;
-
-

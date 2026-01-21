@@ -1,6 +1,10 @@
 "use client"
 
-import { Navbar } from "@/components/navbar"
+import  Navbar  from "@/components/navbar"
+// import Navbar from "@/components/navbar"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,6 +32,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 
 export default function AdminPage() {
+  const router = useRouter()
+
+  // 🔐 ADMIN ROUTE GUARD - CHANGED: Normalize role comparison to handle case variations
+  useEffect(() => {
+    // const token = localStorage.getItem("token")
+    // const role = localStorage.getItem("role")
+    
+    // // CHANGED: Normalize role to lowercase for comparison (handles "Admin", "admin", "ADMIN")
+    // const normalizedRole = role?.toLowerCase().trim() || ""
+
+    // if (!token || normalizedRole !== "admin") {
+    //   router.replace("/login")
+    const token = localStorage.getItem("token")
+     const role = Number(localStorage.getItem("role"))
+
+// ADMIN = 1
+     if (!token || role !== 1) {
+  router.replace("/login")
+    }
+  }, [router])
+
   const [viewBooking, setViewBooking] = useState<any>(null)
   const [isCreateBookingOpen, setIsCreateBookingOpen] = useState(false)
   const [newBooking, setNewBooking] = useState({

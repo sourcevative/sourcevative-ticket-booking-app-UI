@@ -2,7 +2,9 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Navbar } from "@/components/navbar"
+// import  { Navbar } from "@/components/navbar"
+import Navbar from "@/components/navbar";
+
 import { Calendar, Users, Cake, GraduationCap, Bus, Star, Clock, MapPin, Phone, Mail } from "lucide-react"
 import { bookingTypes } from "@/lib/sample-data"
 
