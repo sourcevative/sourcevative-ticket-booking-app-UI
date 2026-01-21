@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Navbar } from "@/components/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,104 +11,174 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { CalendarIcon, Users, Clock, Plus, Minus, AlertCircle } from "lucide-react"
-import { bookingTypes, timeSlots, addOns } from "@/lib/sample-data"
+
+import { getBookingTypes } from "@/src/services/booking.services"
+
+// ⛔ TEMPORARY STATIC DATA (UI NEEDS IT – BACKEND NOT READY YET)
+import { timeSlots, addOns } from "@/lib/sample-data"
 
 export default function BookingPage() {
+  // 🔹 Backend data
+  const [bookingTypes, setBookingTypes] = useState<any[]>([])
+
+  // 🔹 UI state (UNCHANGED)
   const [selectedType, setSelectedType] = useState("")
   const [adults, setAdults] = useState(2)
   const [children, setChildren] = useState(2)
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([])
   const [selectedSlot, setSelectedSlot] = useState("")
 
-  const activeBookingTypes = bookingTypes.filter((t) => (t as any).isActive !== false)
-  const selectedBookingType = activeBookingTypes.find((t) => t.id === selectedType)
+  // 🔹 Load booking types from backend
+  useEffect(() => {
+    const loadBookingTypes = async () => {
+      try {
+        const data = await getBookingTypes()
 
-  const totalGuests = adults + children
-  const isWithinCapacity = selectedBookingType
-    ? totalGuests >= ((selectedBookingType as any).minCapacity || 1) &&
-      totalGuests <= ((selectedBookingType as any).maxCapacity || 100)
-    : true
+        // ✅ ALWAYS ARRAY
+        setBookingTypes(Array.isArray(data) ? data : [])
 
-  const canAddAdults = selectedBookingType ? (selectedBookingType as any).allowAdults !== false : true
-  const canAddChildren = selectedBookingType ? (selectedBookingType as any).allowChildren !== false : true
+        console.log("✅ Booking types loaded:", data)
+      } catch (err: any) {
+        console.error("❌ Failed to load booking types:", err.message)
+      }
+    }
 
+    loadBookingTypes()
+  }, [])
+
+  // Existing logic (UNCHANGED)
+  const activeBookingTypes = bookingTypes.filter(
+    (t) => t.is_active !== false
+  )
+
+  const selectedBookingType = activeBookingTypes.find(
+    (t) => t.id === selectedType
+  )
   const availableSlots = selectedBookingType
-    ? timeSlots.filter((slot) => (selectedBookingType as any).availableSlots?.includes(slot.id) ?? true)
-    : timeSlots
+  ? timeSlots.filter((slot) =>
+      (selectedBookingType as any).available_slots?.includes(slot.id)
+    )
+  : timeSlots
+ 
+  // ✅ ADD ALL OF THIS (FIXES CURRENT + NEXT ERRORS)
 
-  const calculateTotal = () => {
-    if (!selectedBookingType) return 0
-    const bookingCost = selectedBookingType.adultPrice * adults + selectedBookingType.childPrice * children
-    const addOnsCost = selectedAddOns.reduce((sum, id) => {
-      const addOn = addOns.find((a) => a.id === id)
-      return sum + (addOn?.price || 0)
-    }, 0)
-    return bookingCost + addOnsCost
-  }
+const canAddAdults = selectedBookingType
+? (selectedBookingType as any).allow_adults !== false
+: true
 
-  const depositAmount =
-    selectedBookingType && (selectedBookingType as any).requiresDeposit
-      ? (selectedBookingType as any).depositAmount || 0
-      : 0
+const canAddChildren = selectedBookingType
+? (selectedBookingType as any).allow_children !== false
+: true
+
+const totalGuests = adults + children
+
+const isWithinCapacity = selectedBookingType
+? totalGuests >= ((selectedBookingType as any).min_capacity || 1) &&
+  totalGuests <= ((selectedBookingType as any).max_capacity || 100)
+: true
+
+const depositAmount =
+selectedBookingType && (selectedBookingType as any).requires_deposit
+  ? (selectedBookingType as any).deposit_amount || 0
+  : 0
+
+const calculateTotal = () => {
+if (!selectedBookingType) return 0
+
+const bookingCost =
+  (selectedBookingType.adult_price || 0) * adults +
+  (selectedBookingType.child_price || 0) * children
+
+const addOnsCost = selectedAddOns.reduce((sum, id) => {
+  const addOn = addOns.find((a) => a.id === id)
+  return sum + (addOn?.price || 0)
+}, 0)
+
+return bookingCost + addOnsCost
+}
+
+
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+       <Navbar />
 
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">Book Your Visit</h1>
-          <p className="text-muted-foreground">Fill in the details below to reserve your spot</p>
-        </div>
+     <div className="container mx-auto px-4 py-8 max-w-5xl">
+         <div className="mb-8">
+           <h1 className="text-3xl md:text-4xl font-bold mb-2">Book Your Visit</h1>
+           <p className="text-muted-foreground">Fill in the details below to reserve your spot</p>
+         </div>
+         <div className="grid lg:grid-cols-3 gap-6">
+           <div className="lg:col-span-2 space-y-6">
+             {/* Booking Type Selection */}
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            {/* Booking Type Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle>1. Select Booking Type</CardTitle>
-                <CardDescription>Choose the type of visit that suits you best</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {activeBookingTypes.map((type) => (
-                    <button
-                      key={type.id}
-                      onClick={() => {
-                        setSelectedType(type.id)
-                        if (!(type as any).allowAdults) setAdults(0)
-                        if (!(type as any).allowChildren) setChildren(0)
-                        setSelectedSlot("")
-                      }}
-                      className={`p-4 rounded-lg border-2 text-left transition-all ${
-                        selectedType === type.id
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <div className="font-semibold mb-1">{type.name}</div>
-                      <div className="text-sm text-muted-foreground mb-2">{type.description}</div>
-                      <div className="flex gap-2 text-xs flex-wrap">
-                        {(type as any).allowAdults !== false && (
-                          <Badge variant="secondary">Adult £{type.adultPrice}</Badge>
-                        )}
-                        {(type as any).allowChildren !== false && (
-                          <Badge variant="secondary">Child £{type.childPrice}</Badge>
-                        )}
-                        {(type as any).requiresDeposit && (
-                          <Badge variant="outline" className="border-primary text-primary">
-                            Deposit: £{(type as any).depositAmount}
-                          </Badge>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+<Card>
+  <CardHeader>
+    <CardTitle>1. Select Booking Type</CardTitle>
+    <CardDescription>
+      Choose the type of visit that suits you best
+    </CardDescription>
+  </CardHeader>
 
-            {/* Date and Time Selection */}
-            <Card>
+  <CardContent>
+    <div className="grid sm:grid-cols-2 gap-4">
+      {activeBookingTypes.map((type) => (
+        <button
+          key={type.id}
+          onClick={() => {
+            setSelectedType(type.id)
+            if (type.allow_adults === false) setAdults(0)
+            if (type.allow_children === false) setChildren(0)
+            setSelectedSlot("")
+          }}
+          className={`p-4 rounded-lg border-2 text-left transition-all ${
+            selectedType === type.id
+              ? "border-primary bg-primary/5"
+              : "border-border hover:border-primary/50"
+          }`}
+        >
+          {/* ✅ TITLE */}
+          <div className="font-semibold mb-1">
+            {type.name}
+          </div>
+
+          {/* ✅ DESCRIPTION (THIS WAS BREAKING) */}
+          <div className="text-sm text-muted-foreground mb-2">
+            {type.description}
+          </div>
+
+          {/* ✅ PRICE BADGES (SINGLE SOURCE OF TRUTH) */}
+          <div className="flex gap-2 text-xs flex-wrap">
+            {type.allow_adults !== false && (
+              <Badge variant="secondary">
+                Adult £{type.adult_price}
+              </Badge>
+            )}
+
+            {type.allow_children !== false && (
+              <Badge variant="secondary">
+                Child £{type.child_price}
+              </Badge>
+            )}
+
+            {type.requires_deposit && (
+              <Badge
+                variant="outline"
+                className="border-primary text-primary"
+              >
+                Deposit: £{type.deposit_amount}
+              </Badge>
+            )}
+          </div>
+        </button>
+      ))}
+    </div>
+  </CardContent>
+</Card>
+
+
+
+<Card>
               <CardHeader>
                 <CardTitle>2. Select Date & Time</CardTitle>
                 <CardDescription>Choose your preferred visiting date and time slot</CardDescription>
@@ -178,6 +248,9 @@ export default function BookingPage() {
                 </div>
               </CardContent>
             </Card>
+
+
+
 
             {/* Guest Information */}
             <Card>
@@ -292,7 +365,7 @@ export default function BookingPage() {
                     <Label htmlFor="email">Email Address *</Label>
                     <Input id="email" type="email" placeholder="john@email.com" className="mt-1.5" />
                   </div>
-                </div>
+                 </div>
 
                 <div>
                   <Label htmlFor="phone">Phone Number *</Label>
@@ -334,7 +407,8 @@ export default function BookingPage() {
           </div>
 
           {/* Booking Summary */}
-          <div className="lg:col-span-1">
+
+<div className="lg:col-span-1">
             <Card className="sticky top-20">
               <CardHeader>
                 <CardTitle>Booking Summary</CardTitle>
@@ -427,3 +501,14 @@ export default function BookingPage() {
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
+
+
