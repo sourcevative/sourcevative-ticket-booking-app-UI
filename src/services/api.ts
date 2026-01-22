@@ -1,85 +1,27 @@
+import axios from "axios"
+
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000"
 
-type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true,
+})
 
-interface ApiOptions extends RequestInit {
-  /** Relative path, e.g. `/login` */
-  path: string;
-  method?: HttpMethod;
-}
-
-async function apiRequest<TResponse = unknown, TBody = unknown>({
-  path,
-  method = "POST",
-  headers,
-  body,
-  ...rest
-}: ApiOptions & { body?: TBody }): Promise<TResponse> {
-  const url = `${API_BASE_URL}${path}`;
-
-  const init: RequestInit = {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(headers || {}),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    credentials: "include",
-    ...rest,
-  };
-
-  let res: Response;
-  try {
-    res = await fetch(url, init);
-  } catch (error) {
-    // Handle network errors, CORS issues, or connection failures
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : "Network error occurred. Please check your connection and try again.";
-    
-    // Provide more specific error messages for common issues
-    if (errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError")) {
-      throw new Error(
-        "Unable to connect to the server. Please ensure the API server is running and accessible."
-      );
+// ✅ REQUEST INTERCEPTOR
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access_token") // same key as login
+    if (token) {
+      config.headers = config.headers || {}
+      config.headers.Authorization = `Bearer ${token}`
     }
-    
-    throw new Error(errorMessage);
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
   }
-
-  if (!res.ok) {
-    let message = "Something went wrong. Please try again.";
-    try {
-      const data = await res.json();
-      message =
-        data?.detail ||
-        data?.message ||
-        data?.error ||
-        (typeof data === "string" ? data : message);
-    } catch {
-      // ignore JSON parse errors and use default message
-    }
-    throw new Error(message);
-  }
-
-  // Try to parse JSON, but allow empty responses
-  try {
-    return (await res.json()) as TResponse;
-  } catch {
-    return undefined as unknown as TResponse;
-  }
-}
-
-export const api = {
-  post: <TResponse = unknown, TBody = unknown>(
-    path: string,
-    body: TBody,
-    init?: Omit<ApiOptions, "path" | "method" | "body">
-  ) => apiRequest<TResponse, TBody>({ path, method: "POST", body, ...(init || {}) }),
-};
-
-export type ApiClient = typeof api;
-
-
+)
