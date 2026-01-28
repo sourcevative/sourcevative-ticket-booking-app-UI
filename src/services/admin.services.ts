@@ -7,8 +7,10 @@ import { api } from "./api"
 // CREATE booking type
 export const createBookingType = async (payload: {
   name: string
+  description: string
   adult_price: number
   child_price: number
+  total_capacity: number
   admin_id: string
 }) => {
   const res = await api.post("/admin/booking-type", payload)

@@ -1,11 +1,13 @@
 
 "use client"
+import { getAdminBookingTypes } from "@/src/services/admin.services"
+import { useEffect } from "react"
 
 import { useState } from "react"
 // import { createBookingType } from "@/src/services/admin.services"
 import { createBookingType, createTimeSlot } from "@/src/services/admin.services"
 
-import { Navbar } from "@/components/navbar"
+import  Navbar  from "@/components/navbar"
 import {
   Card,
   CardContent,
@@ -46,7 +48,7 @@ import {
   Bus,
 } from "lucide-react"
 
-import { bookingTypes } from "@/lib/sample-data"
+// import { bookingTypes } from "@/lib/sample-data"
 
 const iconOptions = [
   { value: "Users", label: "Users", icon: Users },
@@ -57,7 +59,8 @@ const iconOptions = [
 ]
 
 export default function BookingTypesPage() {
-  const [types, setTypes] = useState<any[]>(bookingTypes)
+  // const [types, setTypes] = useState<any[]>(bookingTypes)
+  const [types, setTypes] = useState<any[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingType, setEditingType] = useState<any>(null)
 
@@ -84,7 +87,21 @@ export default function BookingTypesPage() {
       capacity: number
     }[],
         isActive: true,
-  })
+  }) 
+
+  useEffect(() => {
+    loadBookingTypes()
+  }, [])
+  
+  const loadBookingTypes = async () => {
+    try {
+      const res = await getAdminBookingTypes()
+      setTypes(res.data ?? res)
+    } catch (err) {
+      console.error("Failed to load booking types", err)
+    }
+  }
+  
   const addFeature = () => {
     setFormData((prev) => ({
       ...prev,
@@ -113,17 +130,26 @@ export default function BookingTypesPage() {
       // 1️⃣ Create Booking Type
       const bookingTypeRes = await createBookingType({
         name: formData.name,
+        description: formData.description,  
         adult_price: formData.adultPrice,
         child_price: formData.childPrice,
+        total_capacity: formData.maxCapacity,
         admin_id: "dc7df956-684d-49d6-a20b-ad85d7727bd3",
       })
   
-      const bookingTypeId = bookingTypeRes.data[0].id
+      // const bookingTypeId = bookingTypeRes.data[0].id
+      const bookingTypeId =
+  bookingTypeRes.id ?? bookingTypeRes?.[0]?.id
+
+    if (!bookingTypeId) {
+  throw new Error("Booking type ID not returned from backend")
+     }
   
       // 2️⃣ Create Time Slots
       for (const slot of formData.availableSlots) {
         await createTimeSlot({
           booking_type_id: bookingTypeId,
+          slot_name: slot.id,
           start_time: slot.startTime,
           end_time: slot.endTime,
           capacity: slot.capacity,
@@ -131,6 +157,7 @@ export default function BookingTypesPage() {
       }
   
       alert("Booking type & time slots created successfully 🎉")
+      await loadBookingTypes()  
       setIsDialogOpen(false)
       resetForm()
     } catch (err: any) {
@@ -159,14 +186,8 @@ export default function BookingTypesPage() {
       maxAdvanceBooking: 90,
       cancellationWindow: 24,
       features: [""],
-      availableSlots: (type.availableSlots || []).map((s: any) => ({
-        id: s.id,
-        startTime: s.start_time || s.startTime,
-        endTime: s.end_time || s.endTime,
-      })),
-      
-      
-            isActive: true,
+      availableSlots: [],
+      isActive: true,
     })
   }
 
@@ -188,7 +209,15 @@ export default function BookingTypesPage() {
       maxAdvanceBooking: type.maxAdvanceBooking || 90,
       cancellationWindow: type.cancellationWindow || 24,
       features: type.features || [""],
-      availableSlots: type.availableSlots || ["morning", "afternoon", "fullday"],
+      // availableSlots: type.availableSlots || ["morning", "afternoon", "fullday"],
+       
+      // 🔥 THIS IS THE KEY PART
+    availableSlots: (type.availableSlots || []).map((s: any) => ({
+      id: s.slot_name,               // "morning" | "afternoon" | "fullday"
+      startTime: s.start_time,
+      endTime: s.end_time,
+      capacity: s.capacity,
+    })),
       isActive: type.isActive ?? true,
     })
     setIsDialogOpen(true)
@@ -292,7 +321,7 @@ return (
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="adultPrice">Adult Price (£)</Label>
+                    <Label htmlFor="adultPrice">Adult Price (₹)</Label>
                     <Input
                       id="adultPrice"
                       type="number"
@@ -306,7 +335,7 @@ return (
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="childPrice">Child Price (£)</Label>
+                    <Label htmlFor="childPrice">Child Price (₹)</Label>
                     <Input
                       id="childPrice"
                       type="number"
@@ -787,13 +816,17 @@ return (
                 <div>
                   <div className="text-xs text-muted-foreground mb-2">Features:</div>
                   <ul className="space-y-1">
-                    {type.features.slice(0, 3).map((feature, idx) => (
+                    {/* {type.features.slice(0, 3).map((feature, idx) => ( */}
+                    {(type.features ?? []).slice(0, 3).map((feature: string, idx: number) => (
+
                       <li key={idx} className="text-sm flex items-start gap-2">
                         <span className="text-primary mt-0.5">•</span>
                         <span className="text-balance">{feature}</span>
                       </li>
                     ))}
-                    {type.features.length > 3 && (
+                    {/* {type.features.length > 3 && ( */}
+                    {(type.features?.length ?? 0) > 3 && (
+
                       <li className="text-sm text-muted-foreground">+{type.features.length - 3} more</li>
                     )}
                   </ul>

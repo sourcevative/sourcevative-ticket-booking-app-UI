@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Navbar } from "@/components/navbar"
+import  Navbar  from "@/components/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -151,13 +151,13 @@ return bookingCost + addOnsCost
           <div className="flex gap-2 text-xs flex-wrap">
             {type.allow_adults !== false && (
               <Badge variant="secondary">
-                Adult £{type.adult_price}
+                Adult ₹{type.adult_price}
               </Badge>
             )}
 
             {type.allow_children !== false && (
               <Badge variant="secondary">
-                Child £{type.child_price}
+                Child ₹{type.child_price}
               </Badge>
             )}
 
@@ -166,7 +166,7 @@ return bookingCost + addOnsCost
                 variant="outline"
                 className="border-primary text-primary"
               >
-                Deposit: £{type.deposit_amount}
+                Deposit: ₹{type.deposit_amount}
               </Badge>
             )}
           </div>
