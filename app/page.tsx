@@ -1,14 +1,33 @@
+"use client"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 // import  { Navbar } from "@/components/navbar"
 import Navbar from "@/components/navbar";
-
 import { Calendar, Users, Cake, GraduationCap, Bus, Star, Clock, MapPin, Phone, Mail } from "lucide-react"
-import { bookingTypes } from "@/lib/sample-data"
+// import { bookingTypes } from "@/lib/sample-data"
+import { useEffect, useState } from "react"
+import { getBookingTypes } from "@/src/services/booking.services"
+
 
 export default function HomePage() {
+  const [bookingTypes, setBookingTypes] = useState<any[]>([])
+  useEffect(() => {
+    const loadBookingTypes = async () => {
+      try {
+        const res = await getBookingTypes()
+  
+        const list = Array.isArray(res) ? res : res?.data || []
+  
+        setBookingTypes(list.filter((b: any) => b.is_active !== false))
+      } catch (err) {
+        console.error("Failed to load booking types", err)
+      }
+    }
+  
+    loadBookingTypes()
+  }, [])
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -108,7 +127,7 @@ export default function HomePage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3 mb-4">
-                      {type.features.map((feature, idx) => (
+                    {(type.features ?? []).map((feature: string, idx: number) => (
                         <div key={idx} className="flex items-start gap-2 text-sm">
                           <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5" />
                           <span className="text-muted-foreground">{feature}</span>

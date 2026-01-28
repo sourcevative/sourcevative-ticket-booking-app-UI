@@ -177,7 +177,7 @@
 //     return Promise.reject(error)
 //   }
 // )
-// // >>>>>>> origin/main
+//  >>>>>>> origin/main
 
 import axios from "axios"
 
@@ -207,9 +207,9 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// ✅ RESPONSE INTERCEPTOR (optional but recommended)
+// ✅ RESPONSE INTERCEPTOR (🔥 MAIN FIX HERE)
 api.interceptors.response.use(
-  (response) => response,
+  (response) => response.data, // ✅ IMPORTANT: unwrap data
   (error) => {
     const message =
       error?.response?.data?.detail ||

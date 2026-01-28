@@ -14,6 +14,7 @@ export interface LoginPayload {
   password: string;
 }
 
+
 export interface ForgotPasswordPayload {
   login: string; // email OR phone
 }
