@@ -1,7 +1,9 @@
+
+
 "use client"
 
 import { useState, useEffect } from "react"
-import  Navbar  from "@/components/navbar"
+import Navbar from "@/components/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -12,117 +14,156 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { CalendarIcon, Users, Clock, Plus, Minus, AlertCircle } from "lucide-react"
 
-import { getBookingTypes } from "@/src/services/booking.services"
 
-// ⛔ TEMPORARY STATIC DATA (UI NEEDS IT – BACKEND NOT READY YET)
-import { timeSlots, addOns } from "@/lib/sample-data"
+import { getBookingTypes } from "@/src/services/booking.services"
+import { createBooking } from "@/src/services/bookingCreate.services"
+import { useRouter } from "next/navigation"
+
+// ⛔ UI DATA (AS IT IS)
+import {timeSlots,  addOns } from "@/lib/sample-data"
+
 
 export default function BookingPage() {
-  // 🔹 Backend data
-  const [bookingTypes, setBookingTypes] = useState<any[]>([])
+  const router = useRouter()
+  
 
-  // 🔹 UI state (UNCHANGED)
+  // backend data
+  const [bookingTypes, setBookingTypes] = useState<any[]>([])
+ 
+
+  // existing UI state
   const [selectedType, setSelectedType] = useState("")
   const [adults, setAdults] = useState(2)
   const [children, setChildren] = useState(2)
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([])
   const [selectedSlot, setSelectedSlot] = useState("")
 
-  // 🔹 Load booking types from backend
+
+  // 🔥 LOGIC STATE (ADDED – UI SAME)
+  const [visitDate, setVisitDate] = useState("")
+  const [contactName, setContactName] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [notes, setNotes] = useState("")
+
   useEffect(() => {
-    const loadBookingTypes = async () => {
-      try {
-        const data = await getBookingTypes()
+    getBookingTypes().then((data) => {
+      setBookingTypes(Array.isArray(data) ? data : [])
+    })
+  }, [])
+  useEffect(() => {
+    console.log("visitDate =", visitDate)
+  }, [visitDate])
 
-        // ✅ ALWAYS ARRAY
-        setBookingTypes(Array.isArray(data) ? data : [])
+  
+  const activeBookingTypes = bookingTypes.filter((t) => t.is_active !== false)
 
-        console.log("✅ Booking types loaded:", data)
-      } catch (err: any) {
-        console.error("❌ Failed to load booking types:", err.message)
-      }
+  const selectedBookingType = activeBookingTypes.find((t) => t.id === selectedType)
+
+  // const availableSlots = selectedBookingType
+  //   ? timeSlots.filter((slot) =>
+  //       (selectedBookingType as any).available_slots?.includes(slot.id)
+  //     )
+  //   : timeSlots
+  const availableSlots = timeSlots
+
+  const canAddAdults = selectedBookingType
+    ? (selectedBookingType as any).allow_adults !== false
+    : true
+
+  const canAddChildren = selectedBookingType
+    ? (selectedBookingType as any).allow_children !== false
+    : true
+
+  const totalGuests = adults + children
+
+  const isWithinCapacity = selectedBookingType
+    ? totalGuests >= ((selectedBookingType as any).min_capacity || 1) &&
+      totalGuests <= ((selectedBookingType as any).max_capacity || 100)
+    : true
+
+  const depositAmount =
+    selectedBookingType && (selectedBookingType as any).requires_deposit
+      ? (selectedBookingType as any).deposit_amount || 0
+      : 0
+
+  const calculateTotal = () => {
+    if (!selectedBookingType) return 0
+
+    const bookingCost =
+      (selectedBookingType.adult_price || 0) * adults +
+      (selectedBookingType.child_price || 0) * children
+
+    const addOnsCost = selectedAddOns.reduce((sum, id) => {
+      const addOn = addOns.find((a) => a.id === id)
+      return sum + (addOn?.price || 0)
+    }, 0)
+
+    return bookingCost + addOnsCost
+  }
+
+
+
+  // 🔥 FINAL BOOKING LOGIC
+  const handleBooking = async () => {
+    const userId = localStorage.getItem("user_id")
+    if (!userId) {
+      alert("Please login first")
+      return
     }
 
-    loadBookingTypes()
-  }, [])
+    if (!selectedType || !selectedSlot || !visitDate) {
+      alert("Please complete booking details")
+      return
+    }  
+    
+    const backendTimeSlotId = selectedSlot   // already UUID
+    // const availableSlots = timeSlots
 
-  // Existing logic (UNCHANGED)
-  const activeBookingTypes = bookingTypes.filter(
-    (t) => t.is_active !== false
-  )
+    await createBooking({
+      user_id: userId,
+      booking_type_id: selectedType,
+      // time_slot_id: selectedSlot,
+      time_slot_id: backendTimeSlotId, // UUID ✔️
+      visit_date: visitDate,
+      adults,
+      children,
+      // addons: selectedAddOns,
+      addons: selectedAddOns, // UUID[]
+      contact_name: contactName,
+      contact_email: email,
+      contact_phone: phone,
+      preferred_contact: "email",
+      notes,
+    })
 
-  const selectedBookingType = activeBookingTypes.find(
-    (t) => t.id === selectedType
-  )
-  const availableSlots = selectedBookingType
-  ? timeSlots.filter((slot) =>
-      (selectedBookingType as any).available_slots?.includes(slot.id)
-    )
-  : timeSlots
- 
-  // ✅ ADD ALL OF THIS (FIXES CURRENT + NEXT ERRORS)
-
-const canAddAdults = selectedBookingType
-? (selectedBookingType as any).allow_adults !== false
-: true
-
-const canAddChildren = selectedBookingType
-? (selectedBookingType as any).allow_children !== false
-: true
-
-const totalGuests = adults + children
-
-const isWithinCapacity = selectedBookingType
-? totalGuests >= ((selectedBookingType as any).min_capacity || 1) &&
-  totalGuests <= ((selectedBookingType as any).max_capacity || 100)
-: true
-
-const depositAmount =
-selectedBookingType && (selectedBookingType as any).requires_deposit
-  ? (selectedBookingType as any).deposit_amount || 0
-  : 0
-
-const calculateTotal = () => {
-if (!selectedBookingType) return 0
-
-const bookingCost =
-  (selectedBookingType.adult_price || 0) * adults +
-  (selectedBookingType.child_price || 0) * children
-
-const addOnsCost = selectedAddOns.reduce((sum, id) => {
-  const addOn = addOns.find((a) => a.id === id)
-  return sum + (addOn?.price || 0)
-}, 0)
-
-return bookingCost + addOnsCost
-}
-
-
+    router.push("/my-bookings")
+  }
 
   return (
     <div className="min-h-screen bg-background">
-       <Navbar />
+        <Navbar />
 
-     <div className="container mx-auto px-4 py-8 max-w-5xl">
-         <div className="mb-8">
-           <h1 className="text-3xl md:text-4xl font-bold mb-2">Book Your Visit</h1>
-           <p className="text-muted-foreground">Fill in the details below to reserve your spot</p>
-         </div>
-         <div className="grid lg:grid-cols-3 gap-6">
-           <div className="lg:col-span-2 space-y-6">
-             {/* Booking Type Selection */}
+      <div className="container mx-auto px-4 py-8 max-w-5xl">
+          <div className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">Book Your Visit</h1>
+            <p className="text-muted-foreground">Fill in the details below to reserve your spot</p>
+          </div>
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Booking Type Selection */}
 
-<Card>
-  <CardHeader>
-    <CardTitle>1. Select Booking Type</CardTitle>
-    <CardDescription>
-      Choose the type of visit that suits you best
-    </CardDescription>
-  </CardHeader>
+ <Card>
+   <CardHeader>
+     <CardTitle>1. Select Booking Type</CardTitle>
+     <CardDescription>
+       Choose the type of visit that suits you best
+     </CardDescription>
+   </CardHeader>
 
-  <CardContent>
-    <div className="grid sm:grid-cols-2 gap-4">
-      {activeBookingTypes.map((type) => (
+   <CardContent>
+     <div className="grid sm:grid-cols-2 gap-4">
+       {activeBookingTypes.map((type) => (
         <button
           key={type.id}
           onClick={() => {
@@ -200,10 +241,15 @@ return bookingCost + addOnsCost
                       max={
                         new Date(
                           Date.now() + ((selectedBookingType as any)?.maxAdvanceBooking || 90) * 24 * 60 * 60 * 1000,
+                         
+
                         )
                           .toISOString()
                           .split("T")[0]
                       }
+                      onChange={(e) => setVisitDate(e.target.value)}
+                     
+
                     />
                     <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   </div>
@@ -248,8 +294,6 @@ return bookingCost + addOnsCost
                 </div>
               </CardContent>
             </Card>
-
-
 
 
             {/* Guest Information */}
@@ -359,17 +403,17 @@ return bookingCost + addOnsCost
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="name">Full Name *</Label>
-                    <Input id="name" placeholder="John Smith" className="mt-1.5" />
+                    <Input id="name" placeholder="John Smith" className="mt-1.5"  value={contactName}  onChange={(e) => setContactName(e.target.value)}/>
                   </div>
                   <div>
                     <Label htmlFor="email">Email Address *</Label>
-                    <Input id="email" type="email" placeholder="john@email.com" className="mt-1.5" />
+                    <Input id="email" type="email" placeholder="john@email.com"  value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                  </div>
 
                 <div>
                   <Label htmlFor="phone">Phone Number *</Label>
-                  <Input id="phone" type="tel" placeholder="+44 7700 900000" className="mt-1.5" />
+                  <Input id="phone" type="tel" placeholder="+44 7700 900000" className="mt-1.5" value={phone} onChange={(e) => setPhone(e.target.value)}/>
                 </div>
 
                 <div>
@@ -426,13 +470,14 @@ return bookingCost + addOnsCost
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <CalendarIcon className="h-4 w-4" />
-                        Date not selected
+                        {visitDate || "Date not selected"}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="h-4 w-4" />
                         {selectedSlot
-                          ? timeSlots.find((s) => s.id === selectedSlot)?.name || "Time not selected"
-                          : "Time not selected"}
+                             ? timeSlots.find((s) => s.id === selectedSlot)?.name
+                         : "Time not selected"}
+
                       </div>
                     </div>
 
@@ -440,13 +485,17 @@ return bookingCost + addOnsCost
                       {canAddAdults && adults > 0 && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Adults × {adults}</span>
-                          <span className="font-medium">£{selectedBookingType.adultPrice * adults}</span>
+                          <span className="font-medium">
+                                   £{(selectedBookingType.adult_price || 0) * adults}
+                          </span>
+                          
                         </div>
                       )}
                       {canAddChildren && children > 0 && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Children × {children}</span>
-                          <span className="font-medium">£{selectedBookingType.childPrice * children}</span>
+                          <span className="font-medium">£{(selectedBookingType.child_price || 0) * children}</span>
+                         
                         </div>
                       )}
                       {selectedAddOns.map((id) => {
@@ -477,9 +526,19 @@ return bookingCost + addOnsCost
                       <span className="text-2xl text-primary">£{calculateTotal()}</span>
                     </div>
 
-                    <Button className="w-full" size="lg" disabled={!isWithinCapacity || !selectedSlot}>
+                    {/* <Button className="w-full" size="lg" disabled={!isWithinCapacity || !selectedSlot}>
                       {depositAmount > 0 ? `Pay Deposit £${depositAmount}` : "Proceed to Payment"}
-                    </Button>
+                    </Button> */}
+
+                   <Button
+                   className="w-full"
+                   size="lg"
+                  disabled={!isWithinCapacity || !selectedSlot || !visitDate}
+                 
+                   onClick={handleBooking}
+           >          Confirm Booking
+                        </Button>
+
 
                     <p className="text-xs text-center text-muted-foreground">
                       Free cancellation up to {(selectedBookingType as any).cancellationWindow || 24} hours before visit
@@ -501,7 +560,6 @@ return bookingCost + addOnsCost
     </div>
   )
 }
-
 
 
 
