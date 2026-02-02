@@ -209,7 +209,8 @@ api.interceptors.request.use(
 
 // ✅ RESPONSE INTERCEPTOR (🔥 MAIN FIX HERE)
 api.interceptors.response.use(
-  (response) => response.data, // ✅ IMPORTANT: unwrap data
+  //  (response) => response.data, ✅ IMPORTANT: unwrap data
+     (response) => response,
   (error) => {
     const message =
       error?.response?.data?.detail ||
