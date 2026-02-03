@@ -1,18 +1,17 @@
+
 import { api } from "./api"
 
-// ADMIN – create addon
-export const createAddon = async (payload: {
-  name: string
-  description?: string
-  price: number
-  admin_id: string
-}) => {
-  const res = await api.post("/admin/addon", payload)
-  return res.data
-}
-
-// USER – get addons
 export const getAddons = async () => {
   const res = await api.get("/addons")
-  return res.data
+
+  const raw = Array.isArray(res.data?.data)
+    ? res.data.data
+    : []
+
+  return raw.map((a: any) => ({
+    id: a.id,
+    name: a.name,
+    description: a.description ?? "",
+    price: Number(a.price),
+  }))
 }

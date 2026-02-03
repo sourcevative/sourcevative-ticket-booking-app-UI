@@ -28,9 +28,12 @@ export default function LoginPage() {
       if (email) payload.email = email;
       else if (phone) payload.phone = phone;
 
-      const res: any = await authService.login(payload);
+      const response: any = await authService.login(payload);  //res cha jagi response dela
+      const res = response.data; // new line add
 
-      const role = Number(res?.user?.role);
+      // const role = Number(res?.user?.role);
+      const role = Number(res?.role);
+
       if (role !== 1 && role !== 2) {
         throw new Error("Invalid role received from backend");
       }
@@ -45,8 +48,16 @@ export default function LoginPage() {
       if (res.user?.name) localStorage.setItem("user_name", String(res.user.name));
       if (res.user?.email) localStorage.setItem("user_email", String(res.user.email));
 
-      if (role === 1) router.replace("/admin");
-      else router.replace("/");
+      // if (role === 1) router.replace("/admin");
+      // else router.replace("/");
+      setTimeout(() => {
+        if (role === 1) {
+          router.replace("/admin");
+        } else {
+          router.replace("/");
+        }
+      }, 0);
+      
 
     } catch (err: any) {
       const msg = String(err?.message || "").toLowerCase();

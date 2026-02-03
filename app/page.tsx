@@ -12,14 +12,16 @@ import { getBookingTypes } from "@/src/services/booking.services"
 
 
 export default function HomePage() {
+  //curreency symbol
+  const CURRENCY_SYMBOL = "₹";
+  //backend data
   const [bookingTypes, setBookingTypes] = useState<any[]>([])
   useEffect(() => {
     const loadBookingTypes = async () => {
       try {
         const res = await getBookingTypes()
-  
         const list = Array.isArray(res) ? res : res?.data || []
-  
+        
         setBookingTypes(list.filter((b: any) => b.is_active !== false))
       } catch (err) {
         console.error("Failed to load booking types", err)
@@ -137,8 +139,14 @@ export default function HomePage() {
                     <div className="border-t pt-4 flex items-end justify-between">
                       <div>
                         <div className="text-sm text-muted-foreground">From</div>
-                        <div className="text-2xl font-bold text-primary">£{type.childPrice}</div>
-                        <div className="text-xs text-muted-foreground">per child</div>
+                        {/* <div className="text-2xl font-bold text-primary">₹{type.childPrice}</div>
+                        <div className="text-xs text-muted-foreground">per child</div> */}
+                        <div className="text-2xl font-bold text-primary">
+                        {CURRENCY_SYMBOL}{type.child_price ?? type.adult_price}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                              {type.child_price ? "per child" : "per person"}
+                        </div>
                       </div>
                       <Button asChild>
                         <Link href={`/booking?type=${type.id}`}>Book Now</Link>
