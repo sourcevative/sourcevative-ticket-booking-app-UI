@@ -8,7 +8,7 @@ export const bookingTypes = [
     childPrice: 8,
     features: ["Access to all animal areas", "Playground access", "Picnic areas"],
   },
-  {
+  { 
     id: "group-walkin",
     name: "Group Walk-In",
     description: "Great for groups of 10 or more people",

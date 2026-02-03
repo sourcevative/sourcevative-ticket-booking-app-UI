@@ -1,7 +1,7 @@
 import { api } from "./api"
 
 export const createBooking = async (payload: {
-//   user_id: string
+  user_id: string
   booking_type_id: string
   time_slot_id: string
   visit_date: string
@@ -15,5 +15,10 @@ export const createBooking = async (payload: {
   notes?: string
 }) => {
   const res = await api.post("/book", payload)
-  return res.data
+ 
+  if (!res.data?.booking_id && !res.data?.data?.id) {
+    throw new Error("Booking failed")
+}
+return res.data
+
 }

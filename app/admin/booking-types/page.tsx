@@ -63,6 +63,8 @@ export default function BookingTypesPage() {
   const [types, setTypes] = useState<any[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingType, setEditingType] = useState<any>(null)
+  //currency symbol
+  const CURRENCY_SYMBOL = "₹";
 
   const [formData, setFormData] = useState({
     name: "",
@@ -93,14 +95,27 @@ export default function BookingTypesPage() {
     loadBookingTypes()
   }, [])
   
+  // const loadBookingTypes = async () => {
+  //   try {
+  //     const res = await getAdminBookingTypes()
+  //     setTypes(res.data ?? res)
+  //   } catch (err) {
+  //     console.error("Failed to load booking types", err)
+  //   }
+  // }
   const loadBookingTypes = async () => {
     try {
-      const res = await getAdminBookingTypes()
-      setTypes(res.data ?? res)
+      const rows = await getAdminBookingTypes()
+  
+      console.log("ROWS 👉", rows)
+  
+      setTypes(rows)
     } catch (err) {
       console.error("Failed to load booking types", err)
     }
   }
+  
+  
   
   const addFeature = () => {
     setFormData((prev) => ({
@@ -131,19 +146,21 @@ export default function BookingTypesPage() {
       const bookingTypeRes = await createBookingType({
         name: formData.name,
         description: formData.description,  
+        icon: formData.icon,   // ✅ THIS LINE
         adult_price: formData.adultPrice,
         child_price: formData.childPrice,
         total_capacity: formData.maxCapacity,
         admin_id: "dc7df956-684d-49d6-a20b-ad85d7727bd3",
+        features: formData.features.filter(f => f.trim() !== ""), 
       })
   
       // const bookingTypeId = bookingTypeRes.data[0].id
       const bookingTypeId =
   bookingTypeRes.id ?? bookingTypeRes?.[0]?.id
 
-    if (!bookingTypeId) {
-  throw new Error("Booking type ID not returned from backend")
-     }
+  //   if (!bookingTypeId) {
+  // throw new Error("Booking type ID not returned from backend")
+  //    }
   
       // 2️⃣ Create Time Slots
       for (const slot of formData.availableSlots) {
@@ -190,6 +207,7 @@ export default function BookingTypesPage() {
       isActive: true,
     })
   }
+  
 
   const handleEdit = (type: any) => {
     setEditingType(type)
@@ -229,7 +247,7 @@ export default function BookingTypesPage() {
     }
   }
 
-
+  
 
 return (
   <div className="min-h-screen bg-background">
@@ -365,7 +383,7 @@ return (
 
                 {formData.requiresDeposit && (
                   <div className="space-y-2">
-                    <Label htmlFor="depositAmount">Deposit Amount (£)</Label>
+                    <Label htmlFor="depositAmount">Deposit Amount (₹)</Label>
                     <Input
                       id="depositAmount"
                       type="number"
@@ -518,125 +536,7 @@ return (
                 </div>
               </div>
 
-              {/* Time Slots */}
-              {/* <div className="space-y-4">
-                <h3 className="font-semibold text-sm">Available Time Slots</h3>
-
-                <div className="space-y-2">
-                  {[
-                    { id: "morning", label: "Morning (9:00 AM - 12:00 PM)" },
-                    { id: "afternoon", label: "Afternoon (1:00 PM - 4:00 PM)" },
-                    { id: "fullday", label: "Full Day (9:00 AM - 4:00 PM)" },
-                  ].map((slot) => (
-                    <div key={slot.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <Label htmlFor={slot.id} className="cursor-pointer">
-                        {slot.label}
-                      </Label>
-                      <Switch
-                        id={slot.id}
-                        checked={formData.availableSlots.includes(slot.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setFormData({ ...formData, availableSlots: [...formData.availableSlots, slot.id] })
-                          } else {
-                            setFormData({
-                              ...formData,
-                              availableSlots: formData.availableSlots.filter((s) => s !== slot.id),
-                            })
-                          }
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div> */}
-              {/* Time Slots */}
-{/* <div className="space-y-4">
-  <h3 className="font-semibold text-sm">Available Time Slots</h3>
-
-  {[
-    { id: "morning", label: "Morning" },
-    { id: "afternoon", label: "Afternoon" },
-    { id: "fullday", label: "Full Day" },
-  ].map((slot) => {
-    const slotData = formData.availableSlots.find((s) => s.id === slot.id)
-    const isEnabled = !!slotData
-
-    return (
-      <div key={slot.id} className="border rounded-lg p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="font-medium">{slot.label}</Label>
-          <Switch
-            checked={isEnabled}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                setFormData({
-                  ...formData,
-                  availableSlots: [
-                    ...formData.availableSlots,
-                    {
-                      id: slot.id as any,
-                      startTime: slot.id === "afternoon" ? "13:00" : "09:00",
-                      endTime: slot.id === "morning" ? "12:00" : "16:00",
-                    },
-                  ],
-                })
-              } else {
-                setFormData({
-                  ...formData,
-                  availableSlots: formData.availableSlots.filter(
-                    (s) => s.id !== slot.id
-                  ),
-                })
-              }
-            }}
-          />
-        </div>
-
-        {isEnabled && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs">Start Time</Label>
-              <Input
-                type="time"
-                value={slotData?.startTime || ""}
-                onChange={(e) => {
-                  setFormData({
-                    ...formData,
-                    availableSlots: formData.availableSlots.map((s) =>
-                      s.id === slot.id
-                        ? { ...s, startTime: e.target.value }
-                        : s
-                    ),
-                  })
-                }}
-              />
-            </div>
-
-            <div>
-              <Label className="text-xs">End Time</Label>
-              <Input
-                type="time"
-                value={slotData?.endTime || ""}
-                onChange={(e) => {
-                  setFormData({
-                    ...formData,
-                    availableSlots: formData.availableSlots.map((s) =>
-                      s.id === slot.id
-                        ? { ...s, endTime: e.target.value }
-                        : s
-                    ),
-                  })
-                }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  })}
-</div> */}
-{/* Time Slots */}
+ 
 <div className="space-y-4">
   <h3 className="font-semibold text-sm">Available Time Slots</h3>
 
@@ -774,7 +674,8 @@ return (
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {types.map((type) => {
-          const Icon = iconOptions.find((opt) => opt.value === type.icon)?.icon || Users
+          const Icon =
+          iconOptions.find((opt) => opt.value === type.icon)?.icon || Users
 
           return (
             <Card key={type.id} className="relative">
@@ -798,18 +699,18 @@ return (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Adult</div>
-                    <div className="font-semibold">£{type.adultPrice}</div>
+                    <div className="font-semibold">{CURRENCY_SYMBOL}{type.adultPrice }</div>
                   </div>
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Child</div>
-                    <div className="font-semibold">£{type.childPrice}</div>
+                    <div className="font-semibold">{CURRENCY_SYMBOL}{type.childPrice }</div>
                   </div>
                 </div>
 
                 {(type as any).requiresDeposit && (
                   <div className="p-3 bg-accent/50 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Deposit Required</div>
-                    <div className="font-semibold">£{(type as any).depositAmount}</div>
+                    <div className="font-semibold">{CURRENCY_SYMBOL}{(type as any).depositAmount}</div>
                   </div>
                 )}
 
