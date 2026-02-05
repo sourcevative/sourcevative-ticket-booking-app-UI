@@ -21,7 +21,9 @@ export const createBookingType = async (payload: {
   features: string[]
 }) => {
   const res = await api.post("/admin/booking-type", payload)
-  return res.data
+  // return res.data
+  return res.data?.data ?? res.data
+
 }
 
 /**
@@ -67,7 +69,9 @@ export const updateBookingType = async (
     `/admin/booking-type/${bookingTypeId}`,
     payload
   )
-  return res.data
+  // return res.data
+  return res.data?.data ?? res.data
+
 }
 
 /**
@@ -91,6 +95,7 @@ export const toggleBookingType = async (
 
 export const createTimeSlot = async (payload: {
   booking_type_id: string
+  // slot_name: string
   start_time: string
   end_time: string
   capacity: number
