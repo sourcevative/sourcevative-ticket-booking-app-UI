@@ -21,13 +21,13 @@ export default function HomePage() {
       try {
         const res = await getBookingTypes()
         const list = Array.isArray(res) ? res : res?.data || []
-        
-        setBookingTypes(list.filter((b: any) => b.is_active !== false))
+
+        setBookingTypes(list)
       } catch (err) {
         console.error("Failed to load booking types", err)
       }
     }
-  
+
     loadBookingTypes()
   }, [])
   return (
@@ -119,38 +119,57 @@ export default function HomePage() {
                         : Users
 
               return (
-                <Card key={type.id} className="hover:shadow-lg transition-shadow">
+                <Card key={type.id} className="hover:shadow-lg transition-shadow h-full flex flex-col">
                   <CardHeader>
                     <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                       <IconComponent className="h-6 w-6 text-primary" />
                     </div>
+                    <Badge
+                      className={
+                        type.is_active
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }
+                    >
+                      {type.is_active ? "Active" : "Inactive"}
+                    </Badge>
+
+
+
                     <CardTitle>{type.name}</CardTitle>
                     <CardDescription>{type.description}</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3 mb-4">
-                    {(type.features ?? []).map((feature: string, idx: number) => (
+                  <CardContent className="flex flex-col flex-1">
+                    <div className="space-y-3 mb-4 max-h-[120px] overflow-hidden">
+                      {(type.features ?? []).map((feature: string, idx: number) => (
                         <div key={idx} className="flex items-start gap-2 text-sm">
-                          <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5" />
-                          <span className="text-muted-foreground">{feature}</span>
+                          <div className="h-1.5 w-1.5 rounded-full bg-primary/70 mt-1.5" />
+                          <span className="text-muted-foreground leading-snug">{feature}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="border-t pt-4 flex items-end justify-between">
+                    <div className="border-t pt-4 flex items-end justify-between mt-auto">
                       <div>
                         <div className="text-sm text-muted-foreground">From</div>
-                        {/* <div className="text-2xl font-bold text-primary">₹{type.childPrice}</div>
-                        <div className="text-xs text-muted-foreground">per child</div> */}
+                        
                         <div className="text-2xl font-bold text-primary">
-                        {CURRENCY_SYMBOL}{type.child_price ?? type.adult_price}
+                          {CURRENCY_SYMBOL}{type.child_price ?? type.adult_price}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                              {type.child_price ? "per child" : "per person"}
+                          {type.child_price ? "per child" : "per person"}
                         </div>
                       </div>
-                      <Button asChild>
+                      {/* <Button asChild>
                         <Link href={`/booking?type=${type.id}`}>Book Now</Link>
+                      </Button> */}
+                      <Button disabled={!type.is_active}>
+                        {type.is_active ? (
+                          <Link href={`/booking?type=${type.id}`}>Book Now</Link>
+                        ) : (
+                          "Inactive"
+                        )}
                       </Button>
+
                     </div>
                   </CardContent>
                 </Card>

@@ -44,10 +44,12 @@ export const getAdminBookingTypes = async () => {
     adultPrice: Number(t.adult_price ?? 0),
     childPrice: Number(t.child_price ?? 0),
     totalCapacity: Number(t.total_capacity ?? 0),
-    features :t.features ?? [],
-    isActive: t.is_active ?? true,
+    features: Array.isArray(t.features) ? t.features : [],
+    is_active: t.is_active === true, // ✅ ONLY THIS
+    icon: t.icon,
   }))
 }
+
 
 /**
  * UPDATE booking type (FULL UPDATE)
@@ -79,11 +81,12 @@ export const toggleBookingType = async (
   isActive: boolean
 ) => {
   const res = await api.post(
-    `/admin/booking-type/${bookingTypeId}/toggle`,
-    { is_active: isActive }
+    `/admin/booking-type/${bookingTypeId}/toggle?is_active=${isActive}`
   )
+
   return res.data
 }
+
 
 /* ===========================
    ADMIN – TIME SLOTS

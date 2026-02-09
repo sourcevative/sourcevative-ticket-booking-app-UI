@@ -85,12 +85,6 @@ export default function BookingPage() {
 
   const selectedBookingType = activeBookingTypes.find((t) => t.id === selectedType)
 
-  // const availableSlots = selectedBookingType
-  //   ? timeSlots.filter((slot) =>
-  //       (selectedBookingType as any).available_slots?.includes(slot.id)
-  //     )
-  //   : timeSlots
-  // const availableSlots = timeSlots
 
   const canAddAdults = selectedBookingType
     ? (selectedBookingType as any).allow_adults !== false
@@ -179,66 +173,51 @@ export default function BookingPage() {
             <div className="lg:col-span-2 space-y-6">
               {/* Booking Type Selection */}
 
- <Card>
-   <CardHeader>
-     <CardTitle>1. Select Booking Type</CardTitle>
-     <CardDescription>
-       Choose the type of visit that suits you best
-     </CardDescription>
-   </CardHeader>
+              <Card>
+  <CardHeader>
+    <CardTitle>1. Select Booking Type</CardTitle>
+    <CardDescription>
+      Choose the type of visit that suits you best
+    </CardDescription>
+  </CardHeader>
 
-   <CardContent>
-     <div className="grid sm:grid-cols-2 gap-4">
-       {activeBookingTypes.map((type) => (
-        <button
-          key={type.id}
-          onClick={() => {
-            setSelectedType(type.id)
-            if (type.allow_adults === false) setAdults(0)
-            if (type.allow_children === false) setChildren(0)
-            setSelectedSlot("")
-          }}
-          className={`p-4 rounded-lg border-2 text-left transition-all ${
-            selectedType === type.id
-              ? "border-primary bg-primary/5"
-              : "border-border hover:border-primary/50"
-          }`}
-        >
-          {/* ✅ TITLE */}
-          <div className="font-semibold mb-1">
-            {type.name}
-          </div>
+  <CardContent>
+    <div className="grid sm:grid-cols-2 gap-4">
+    {bookingTypes.map((type) => (
+  <div
+    key={type.id}
+    className={`border rounded-lg p-4 transition-all ${
+      type.is_active
+        ? "border-border hover:border-primary cursor-pointer"
+        : "border-red-300 bg-red-50 opacity-70 cursor-not-allowed"
+    }`}
+    onClick={() => {
+      if (!type.is_active) return
+      setSelectedType(type.id)
+      setSelectedSlot("")
+    }}
+  >
+    {/* 🔴🟢 STATUS BADGE */}
+    <span
+      className={`text-xs px-2 py-1 rounded-full mb-2 inline-block ${
+        type.is_active
+          ? "bg-green-100 text-green-700"
+          : "bg-red-100 text-red-700"
+      }`}
+    >
+      {type.is_active ? "Active" : "Inactive"}
+    </span>
 
-          {/* ✅ DESCRIPTION (THIS WAS BREAKING) */}
-          <div className="text-sm text-muted-foreground mb-2">
-            {type.description}
-          </div>
+    {/* TITLE */}
+    <div className="font-semibold">{type.name}</div>
 
-          {/* ✅ PRICE BADGES (SINGLE SOURCE OF TRUTH) */}
-          <div className="flex gap-2 text-xs flex-wrap">
-            {type.allow_adults !== false && (
-              <Badge variant="secondary">
-                Adult {CURRENCY_SYMBOL}{type.adult_price}
-              </Badge>
-            )}
+    {/* DESCRIPTION */}
+    <div className="text-sm text-muted-foreground">
+      {type.description}
+    </div>
+  </div>
+))}
 
-            {type.allow_children !== false && (
-              <Badge variant="secondary">
-                Child {CURRENCY_SYMBOL}{type.child_price}
-              </Badge>
-            )}
-
-            {type.requires_deposit && (
-              <Badge
-                variant="outline"
-                className="border-primary text-primary"
-              >
-                Deposit: {CURRENCY_SYMBOL}{type.deposit_amount}
-              </Badge>
-            )}
-          </div>
-        </button>
-      ))}
     </div>
   </CardContent>
 </Card>
@@ -311,13 +290,6 @@ export default function BookingPage() {
                                {slot.time || `${slot.start_time} - ${slot.end_time}`}
                           </div>
 
-
-
-                          {/* <div className="font-medium text-sm">{slot.name}</div>
-                          <div className="text-xs text-muted-foreground mt-1">{slot.time}</div> */}
-                          {/* <Badge variant="outline" className="mt-2 text-xs">
-                            {slot.capacity - 25} spots left
-                          </Badge> */}
                           <Badge variant="outline" className="mt-2 text-xs">
                               {slot.capacity} spots
                          </Badge>
@@ -602,7 +574,31 @@ export default function BookingPage() {
 
 
 
+{/* <div className="flex gap-2 text-xs flex-wrap">
+            {type.allow_adults !== false && (
+              <Badge variant="secondary">
+                Adult {CURRENCY_SYMBOL}
+                {type.adult_price}
+              </Badge>
+            )}
 
+            {type.allow_children !== false && (
+              <Badge variant="secondary">
+                Child {CURRENCY_SYMBOL}
+                {type.child_price}
+              </Badge>
+            )}
+
+            {type.requires_deposit && (
+              <Badge
+                variant="outline"
+                className="border-primary text-primary"
+              >
+                Deposit {CURRENCY_SYMBOL}
+                {type.deposit_amount}
+              </Badge>
+            )}
+          </div> */}
 
 
 
