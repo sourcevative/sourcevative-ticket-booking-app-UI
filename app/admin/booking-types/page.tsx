@@ -2,7 +2,7 @@
 "use client"
 import { getAdminBookingTypes } from "@/src/services/admin.services"
 import { useEffect } from "react"
-
+// import type { SlotId, SlotFormData } from "@/src/types/slot"
 import { useState } from "react"
 // import { createBookingType } from "@/src/services/admin.services"
 import { createBookingType, createTimeSlot } from "@/src/services/admin.services"
@@ -88,6 +88,7 @@ export default function BookingTypesPage() {
       endTime: string
       capacity: number
     }[],
+   
         isActive: true,
   }) 
 
@@ -146,7 +147,7 @@ export default function BookingTypesPage() {
       const bookingTypeRes = await createBookingType({
         name: formData.name,
         description: formData.description,  
-        icon: formData.icon,   // ✅ THIS LINE
+        // icon: formData.icon,   // ✅ THIS LINE
         adult_price: formData.adultPrice,
         child_price: formData.childPrice,
         total_capacity: formData.maxCapacity,
@@ -543,8 +544,9 @@ return (
   {[
     { id: "morning", label: "Morning", start: "09:00", end: "12:00" },
     { id: "afternoon", label: "Afternoon", start: "13:00", end: "16:00" },
+    { id: "evening", label: "Evening", start: "17:00", end: "20:00" }, // ✅ NEW
     { id: "fullday", label: "Full Day", start: "09:00", end: "16:00" },
-  ].map((slot) => {
+  ] .map((slot) => {
     const slotData = formData.availableSlots.find((s) => s.id === slot.id)
     const isEnabled = !!slotData
 

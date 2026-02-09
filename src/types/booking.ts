@@ -1,4 +1,5 @@
 export interface CreateBookingPayload {
+  // slot_name: string
   user_id: string
   booking_type_id: string
   time_slot_id: string
