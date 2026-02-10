@@ -2,7 +2,7 @@
 "use client"
 import { getAdminBookingTypes } from "@/src/services/admin.services"
 import { useEffect } from "react"
-
+// import type { SlotId, SlotFormData } from "@/src/types/slot"
 import { useState } from "react"
 // import { createBookingType } from "@/src/services/admin.services"
 import { createBookingType, createTimeSlot, updateBookingType, toggleBookingType, } from "@/src/services/admin.services"
@@ -168,6 +168,8 @@ export default function BookingTypesPage() {
       const bookingTypeRes = await createBookingType({
         name: formData.name,
         description: formData.description,
+        description: formData.description,  
+        // icon: formData.icon,   // ✅ THIS LINE
         adult_price: formData.adultPrice,
         child_price: formData.childPrice,
         total_capacity: formData.maxCapacity,

@@ -1,4 +1,5 @@
 "use client"
+import { availabilityData, analyticsData, bookingTypes, timeSlots } from "@/lib/sample-data"
 
 import  Navbar  from "@/components/navbar"
 // import Navbar from "@/components/navbar"
@@ -22,7 +23,7 @@ import {
   Clock,
   CreditCard,
 } from "lucide-react"
-import { sampleBookings, availabilityData, analyticsData, bookingTypes, timeSlots } from "@/lib/sample-data"
+// import { sampleBookings, availabilityData, analyticsData, bookingTypes, timeSlots } from "@/lib/sample-data"
 import Link from "next/link"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -36,14 +37,6 @@ export default function AdminPage() {
 
   // 🔐 ADMIN ROUTE GUARD - CHANGED: Normalize role comparison to handle case variations
   useEffect(() => {
-    // const token = localStorage.getItem("token")
-    // const role = localStorage.getItem("role")
-    
-    // // CHANGED: Normalize role to lowercase for comparison (handles "Admin", "admin", "ADMIN")
-    // const normalizedRole = role?.toLowerCase().trim() || ""
-
-    // if (!token || normalizedRole !== "admin") {
-    //   router.replace("/login")
     const token = localStorage.getItem("token")
      const role = Number(localStorage.getItem("role"))
 
@@ -53,8 +46,28 @@ export default function AdminPage() {
     }
   }, [router])
 
-  const [viewBooking, setViewBooking] = useState<any>(null)
+  useEffect(() => {
+    const fetchAdminBookings = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/admin/bookings")
+        const data = await res.json()
+        setBookings(data)
+      } catch (err) {
+        console.error("Admin bookings fetch failed", err)
+      } finally {
+        setLoadingBookings(false)
+      }
+    }
+  
+    fetchAdminBookings()
+  }, [])
+  
+  const [bookings, setBookings] = useState<any[]>([])
+  const [loadingBookings, setLoadingBookings] = useState(true)
   const [isCreateBookingOpen, setIsCreateBookingOpen] = useState(false)
+
+  const [viewBooking, setViewBooking] = useState<any>(null)
+  const [loadingDetails, setLoadingDetails] = useState(false)
   const [newBooking, setNewBooking] = useState({
     customerName: "",
     email: "",
@@ -67,6 +80,21 @@ export default function AdminPage() {
     specialNotes: "",
     paymentMethod: "cash",
   })
+
+
+  const fetchBookingDetails = async (id: string) => {
+    try {
+      setLoadingDetails(true)
+      const res = await fetch(`http://localhost:8000/admin/bookings/${id}`)
+      const data = await res.json()
+      setViewBooking(data)
+    } catch (err) {
+      console.error("Booking details fetch failed", err)
+    } finally {
+      setLoadingDetails(false)
+    }
+  }
+  
 
   const calculateNewBookingTotal = () => {
     const selectedType = bookingTypes.find((type) => type.id === newBooking.bookingType)
@@ -189,22 +217,23 @@ export default function AdminPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {sampleBookings.map((booking) => (
+                {/* <div className="space-y-4">
+                  {bookings.map((booking) => (
                     <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-4">
                         <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                           <Calendar className="h-6 w-6 text-primary" />
                         </div>
                         <div>
-                          <div className="font-semibold">{booking.customerName}</div>
+                          <div className="font-semibold">{booking.contact_name}</div>
                           <div className="text-sm text-muted-foreground">
-                            {new Date(booking.date).toLocaleDateString("en-GB", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}{" "}
-                            • {booking.timeSlot.replace("-", " ")}
+                          {new Date(booking.visit_date).toLocaleDateString("en-GB", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })}
+                             • {booking.time_slots.start_time} - {booking.time_slots.end_time}
+
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {booking.adults} Adults, {booking.children} Children
@@ -213,18 +242,69 @@ export default function AdminPage() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <div className="font-semibold text-primary">£{booking.totalAmount}</div>
-                          <Badge variant={booking.paymentStatus === "paid" ? "default" : "outline"} className="text-xs">
-                            {booking.paymentStatus}
+                          <div className="font-semibold text-primary">₹{booking.total_amount}</div>
+                          <Badge variant={booking.payment_status === "paid" ? "default" : "outline"} className="text-xs">
+                            {booking.payment_status}
                           </Badge>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => setViewBooking(booking)}>
+                        <Button variant="outline" size="sm" onClick={() =>  fetchBookingDetails(booking.id)}>
                           View Details
                         </Button>
                       </div>
                     </div>
                   ))}
+                </div> */}
+                <div className="space-y-4">
+                     {loadingBookings ? (
+              <div className="text-center py-10 text-muted-foreground">
+                 Loading bookings...
                 </div>
+                  ) : (
+                    bookings.map((booking) => (
+                <div
+                 key={booking.id}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 border rounded-lg"
+        >
+                  {/* LEFT */}
+             <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Calendar className="h-6 w-6 text-primary" />
+               </div>
+
+                <div>
+                  <div className="font-semibold">{booking.contact_name}</div>
+                    <div className="text-sm text-muted-foreground">
+                       {new Date(booking.visit_date).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                           month: "short",
+                           year: "numeric",
+                        })}
+                           {" • "}
+                            {booking.time_slots.start_time} - {booking.time_slots.end_time}
+                   </div>
+                       <div className="text-sm text-muted-foreground">
+                         {booking.adults} Adults, {booking.children} Children
+                          </div>
+                      </div>
+                  </div>
+           {/* RIGHT */}
+                 <div className="flex flex-col sm:items-end gap-2">
+                    <div className="font-semibold text-primary">
+                       ₹{booking.total_amount}
+               </div>
+                    <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => fetchBookingDetails(booking.id)}
+               >
+                     View Details
+                 </Button>
+              </div>
+          </div>
+          ))
+         )}
+    </div>
+
               </CardContent>
             </Card>
           </TabsContent>
@@ -479,19 +559,19 @@ export default function AdminPage() {
         </Tabs>
       </div>
 
-      <Dialog open={!!viewBooking} onOpenChange={(open) => !open && setViewBooking(null)}>
+      <Dialog open={loadingDetails || !!viewBooking} onOpenChange={(open) => !open && setViewBooking(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Booking Details</span>
-              <Badge variant={viewBooking?.bookingStatus === "confirmed" ? "default" : "secondary"}>
-                {viewBooking?.bookingStatus}
+              <Badge variant={viewBooking?.status === "confirmed" ? "default" : "secondary"}>
+                {viewBooking?.status}
               </Badge>
             </DialogTitle>
             <DialogDescription>Booking ID: {viewBooking?.id}</DialogDescription>
           </DialogHeader>
 
-          {viewBooking && (
+          {!loadingDetails && viewBooking && (
             <div className="space-y-6">
               <div>
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
@@ -501,20 +581,20 @@ export default function AdminPage() {
                 <div className="grid sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Name</div>
-                    <div className="font-medium">{viewBooking.customerName}</div>
+                    <div className="font-medium">{viewBooking.contact_name}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Email</div>
                     <div className="font-medium flex items-center gap-2">
                       <Mail className="h-3 w-3" />
-                      {viewBooking.email}
+                      {viewBooking.contact_email}
                     </div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Phone</div>
                     <div className="font-medium flex items-center gap-2">
                       <Phone className="h-3 w-3" />
-                      {viewBooking.phone}
+                      {viewBooking.contact_phone}
                     </div>
                   </div>
                 </div>
@@ -528,14 +608,17 @@ export default function AdminPage() {
                 <div className="grid sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Booking Type</div>
+                    {/* <div className="font-medium capitalize">
+                      {bookingTypes.find((t) => t.id === viewBooking.booking_type)?.name || viewBooking.booking_type}
+                    </div> */}
                     <div className="font-medium capitalize">
-                      {bookingTypes.find((t) => t.id === viewBooking.bookingType)?.name || viewBooking.bookingType}
-                    </div>
+                           {viewBooking.booking_types?.name}
+                        </div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Date</div>
                     <div className="font-medium">
-                      {new Date(viewBooking.date).toLocaleDateString("en-GB", {
+                      {new Date(viewBooking.visit_date).toLocaleDateString("en-GB", {
                         weekday: "long",
                         month: "long",
                         day: "numeric",
@@ -547,7 +630,7 @@ export default function AdminPage() {
                     <div className="text-sm text-muted-foreground mb-1">Time Slot</div>
                     <div className="font-medium flex items-center gap-2 capitalize">
                       <Clock className="h-3 w-3" />
-                      {viewBooking.timeSlot.replace("-", " ")}
+                      {viewBooking.time_slots.start_time} - {viewBooking.time_slots.end_time}
                     </div>
                   </div>
                   <div>
@@ -567,22 +650,22 @@ export default function AdminPage() {
                 <div className="p-4 bg-muted/50 rounded-lg space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Total Amount</span>
-                    <span className="text-2xl font-bold text-primary">£{viewBooking.totalAmount}</span>
+                    <span className="text-2xl font-bold text-primary">₹{viewBooking.total_amount}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Payment Status</span>
-                    <Badge variant={viewBooking.paymentStatus === "paid" ? "default" : "outline"}>
-                      {viewBooking.paymentStatus}
+                    <Badge variant={viewBooking.payment_status === "paid" ? "default" : "outline"}>
+                      {viewBooking.payment_status}
                     </Badge>
                   </div>
                 </div>
               </div>
 
-              {viewBooking.specialNotes && (
+              {viewBooking.notes && (
                 <div>
                   <h3 className="font-semibold mb-3">Special Notes</h3>
                   <div className="p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm">{viewBooking.specialNotes}</p>
+                    <p className="text-sm">{viewBooking.notes}</p>
                   </div>
                 </div>
               )}

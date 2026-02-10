@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -485,9 +484,18 @@ export default function BookingPage() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="h-4 w-4" />
-                        {selectedSlot
+                        {/* {selectedSlot
                              ? availableSlots.find((s) => s.id === selectedSlot)?.name //timeSlots
-                         : "Time not selected"}
+                         : "Time not selected"} */}
+                         {selectedSlot
+                                       ? (() => {
+                             const slot = availableSlots.find((s) => s.id === selectedSlot)
+                                return slot
+                             ? `${slot.slot_name} (${slot.start_time} - ${slot.end_time})`
+                                : "Time not selected"
+                                      })()
+                                : "Time not selected"}
+
 
                       </div>
                     </div>
