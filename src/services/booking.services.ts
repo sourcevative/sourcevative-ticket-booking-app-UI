@@ -57,7 +57,9 @@ export const getBookingTypes = async () => {
     description: t.description ?? "",
     adult_price: t.adult_price ?? 0,
     child_price: t.child_price ?? 0,
+    features: Array.isArray(t.features) ? t.features : [],
     total_capacity: t.total_capacity ?? 0,
+    is_active: t.is_active ?? true,
   }))
 }
 
