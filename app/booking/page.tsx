@@ -1,5 +1,6 @@
 
 "use client"
+import { api } from "@/src/services/api"
 
 import { useState, useEffect } from "react"
 import Navbar from "@/components/navbar"
@@ -13,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { CalendarIcon, Users, Clock, Plus, Minus, AlertCircle } from "lucide-react"
 
-import { getAddons } from "@/src/services/addon.services"
+// import { getAddons } from "@/src/services/addon.services"
 
 import { getBookingTypes } from "@/src/services/booking.services"
 import { createBooking } from "@/src/services/bookingCreate.services"
@@ -25,25 +26,34 @@ import { useRouter } from "next/navigation"
 
 import { getTimeSlotsByBookingType } from "@/src/services/booking.services"
 
+type AddOn = {
+  id: string
+  name: string
+  description: string
+  price: number
+}
 
 export default function BookingPage() {
   const router = useRouter()
 
   const [availableSlots, setAvailableSlots] = useState<any[]>([])
-  const [addOns, setAddOns] = useState<any[]>([])
+  // const [addOns, setAddOns] = useState([])
+  // const [selectedAddOns, setSelectedAddOns] = useState([])
+  const [addOns, setAddOns] = useState<AddOn[]>([])
+const [selectedAddOns, setSelectedAddOns] = useState<string[]>([])
 
   //curreency symbol
   const CURRENCY_SYMBOL = "₹";
 
   // backend data
   const [bookingTypes, setBookingTypes] = useState<any[]>([])
- 
+
 
   // existing UI state
   const [selectedType, setSelectedType] = useState("")
   const [adults, setAdults] = useState(2)
   const [children, setChildren] = useState(2)
-  const [selectedAddOns, setSelectedAddOns] = useState<string[]>([])
+  // const [selectedAddOns, setSelectedAddOns] = useState<string[]>([])
   const [selectedSlot, setSelectedSlot] = useState("")
 
 
@@ -64,22 +74,31 @@ export default function BookingPage() {
   }, [visitDate])
 
   useEffect(() => {
-    getAddons()
-      .then(setAddOns)
-      .catch(() => setAddOns([]))
+    api
+      .get("/addons")
+      .then((res) => {
+        console.log("ADDONS API RESPONSE 👉", res.data)
+        const addonsData =
+          res.data?.data || res.data?.addons || []
+        setAddOns(addonsData)
+      })
+      .catch(() => {
+        setAddOns([])
+      })
   }, [])
-  
+
+
   useEffect(() => {
     if (!selectedType) {
       setAvailableSlots([])
       return
     }
-  
+
     getTimeSlotsByBookingType(selectedType)
       .then((slots) => setAvailableSlots(slots))
       .catch(() => setAvailableSlots([]))
   }, [selectedType])
-  
+
   const activeBookingTypes = bookingTypes.filter((t) => t.is_active !== false)
 
   const selectedBookingType = activeBookingTypes.find((t) => t.id === selectedType)
@@ -97,7 +116,7 @@ export default function BookingPage() {
 
   const isWithinCapacity = selectedBookingType
     ? totalGuests >= ((selectedBookingType as any).min_capacity || 1) &&
-      totalGuests <= ((selectedBookingType as any).max_capacity || 100)
+    totalGuests <= ((selectedBookingType as any).max_capacity || 100)
     : true
 
   const depositAmount =
@@ -133,7 +152,7 @@ export default function BookingPage() {
     if (!selectedType || !selectedSlot || !visitDate) {
       alert("Please complete booking details")
       return
-    }  
+    }
     try {
       const res = await createBooking({
         user_id: userId,
@@ -148,82 +167,82 @@ export default function BookingPage() {
         contact_phone: phone,
         preferred_contact: "email",
         notes,
-      })
+      }
+
+      )
       alert("✅ Your booking has been confirmed")
       router.push("/bookings")
     } catch (err) {
       alert("Booking failed")
     }
-    }
+  }
 
-    
-  
-  
+
+
+
   return (
     <div className="min-h-screen bg-background">
-        <Navbar />
+      <Navbar />
 
       <div className="container mx-auto px-4 py-8 max-w-5xl">
-          <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Book Your Visit</h1>
-            <p className="text-muted-foreground">Fill in the details below to reserve your spot</p>
-          </div>
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              {/* Booking Type Selection */}
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold mb-2">Book Your Visit</h1>
+          <p className="text-muted-foreground">Fill in the details below to reserve your spot</p>
+        </div>
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Booking Type Selection */}
 
-              <Card>
-  <CardHeader>
-    <CardTitle>1. Select Booking Type</CardTitle>
-    <CardDescription>
-      Choose the type of visit that suits you best
-    </CardDescription>
-  </CardHeader>
+            <Card>
+              <CardHeader>
+                <CardTitle>1. Select Booking Type</CardTitle>
+                <CardDescription>
+                  Choose the type of visit that suits you best
+                </CardDescription>
+              </CardHeader>
 
-  <CardContent>
-    <div className="grid sm:grid-cols-2 gap-4">
-    {bookingTypes.map((type) => (
-  <div
-    key={type.id}
-    className={`border rounded-lg p-4 transition-all ${
-      type.is_active
-        ? "border-border hover:border-primary cursor-pointer"
-        : "border-red-300 bg-red-50 opacity-70 cursor-not-allowed"
-    }`}
-    onClick={() => {
-      if (!type.is_active) return
-      setSelectedType(type.id)
-      setSelectedSlot("")
-    }}
-  >
-    {/* 🔴🟢 STATUS BADGE */}
-    <span
-      className={`text-xs px-2 py-1 rounded-full mb-2 inline-block ${
-        type.is_active
-          ? "bg-green-100 text-green-700"
-          : "bg-red-100 text-red-700"
-      }`}
-    >
-      {type.is_active ? "Active" : "Inactive"}
-    </span>
+              <CardContent>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {bookingTypes.map((type) => (
+                    <div
+                      key={type.id}
+                      className={`border rounded-lg p-4 transition-all ${type.is_active
+                          ? "border-border hover:border-primary cursor-pointer"
+                          : "border-red-300 bg-red-50 opacity-70 cursor-not-allowed"
+                        }`}
+                      onClick={() => {
+                        if (!type.is_active) return
+                        setSelectedType(type.id)
+                        setSelectedSlot("")
+                      }}
+                    >
+                      {/* 🔴🟢 STATUS BADGE */}
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full mb-2 inline-block ${type.is_active
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                          }`}
+                      >
+                        {type.is_active ? "Active" : "Inactive"}
+                      </span>
 
-    {/* TITLE */}
-    <div className="font-semibold">{type.name}</div>
+                      {/* TITLE */}
+                      <div className="font-semibold">{type.name}</div>
 
-    {/* DESCRIPTION */}
-    <div className="text-sm text-muted-foreground">
-      {type.description}
-    </div>
-  </div>
-))}
+                      {/* DESCRIPTION */}
+                      <div className="text-sm text-muted-foreground">
+                        {type.description}
+                      </div>
+                    </div>
+                  ))}
 
-    </div>
-  </CardContent>
-</Card>
+                </div>
+              </CardContent>
+            </Card>
 
 
 
-<Card>
+            <Card>
               <CardHeader>
                 <CardTitle>2. Select Date & Time</CardTitle>
                 <CardDescription>Choose your preferred visiting date and time slot</CardDescription>
@@ -245,14 +264,14 @@ export default function BookingPage() {
                       max={
                         new Date(
                           Date.now() + ((selectedBookingType as any)?.maxAdvanceBooking || 90) * 24 * 60 * 60 * 1000,
-                         
+
 
                         )
                           .toISOString()
                           .split("T")[0]
                       }
                       onChange={(e) => setVisitDate(e.target.value)}
-                     
+
 
                     />
                     <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -276,22 +295,21 @@ export default function BookingPage() {
                         <button
                           key={slot.id}
                           onClick={() => setSelectedSlot(slot.id)}
-                          className={`p-3 rounded-lg border-2 transition-all text-left ${
-                            selectedSlot === slot.id
+                          className={`p-3 rounded-lg border-2 transition-all text-left ${selectedSlot === slot.id
                               ? "border-primary bg-primary/5"
                               : "border-border hover:border-primary/50"
-                          }`}
+                            }`}
                         >
                           <div className="font-medium text-sm">
-                                     {slot.name || `${slot.start_time} - ${slot.end_time}`}
-                             </div>
+                            {slot.name || `${slot.start_time} - ${slot.end_time}`}
+                          </div>
                           <div className="text-xs text-muted-foreground mt-1">
-                               {slot.time || `${slot.start_time} - ${slot.end_time}`}
+                            {slot.time || `${slot.start_time} - ${slot.end_time}`}
                           </div>
 
                           <Badge variant="outline" className="mt-2 text-xs">
-                              {slot.capacity} spots
-                         </Badge>
+                            {slot.capacity} spots
+                          </Badge>
 
                         </button>
                       ))}
@@ -378,29 +396,45 @@ export default function BookingPage() {
                 <CardDescription>Add optional extras to make your visit more special</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {addOns.map((addOn) => (
-                  <div key={addOn.id} className="flex items-start gap-3 p-3 rounded-lg border">
-                    <Checkbox
-                      id={addOn.id}
-                      checked={selectedAddOns.includes(addOn.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedAddOns([...selectedAddOns, addOn.id])
-                        } else {
-                          setSelectedAddOns(selectedAddOns.filter((id) => id !== addOn.id))
-                        }
-                      }}
-                    />
-                    <div className="flex-1">
-                      <Label htmlFor={addOn.id} className="font-medium cursor-pointer">
-                        {addOn.name}
-                      </Label>
-                      <p className="text-sm text-muted-foreground">{addOn.description}</p>
-                    </div>
-                    <div className="font-semibold text-primary">{CURRENCY_SYMBOL}{addOn.price}</div>
-                  </div>
-                ))}
-              </CardContent>
+  {addOns.length === 0 && (
+    <div className="text-sm text-muted-foreground border rounded-lg p-4">
+      No add-ons available at the moment
+    </div>
+  )}
+
+  {addOns.map((addOn) => (
+    <div
+      key={addOn.id}
+      className="flex items-start gap-3 p-3 rounded-lg border"
+    >
+      <Checkbox
+        id={addOn.id}
+        checked={selectedAddOns.includes(addOn.id)}
+        onCheckedChange={(checked) => {
+          if (checked) {
+            setSelectedAddOns([...selectedAddOns, addOn.id])
+          } else {
+            setSelectedAddOns(
+              selectedAddOns.filter((id) => id !== addOn.id)
+            )
+          }
+        }}
+      />
+      <div className="flex-1">
+        <Label htmlFor={addOn.id} className="font-medium cursor-pointer">
+          {addOn.name}
+        </Label>
+        <p className="text-sm text-muted-foreground">
+          {addOn.description}
+        </p>
+      </div>
+      <div className="font-semibold text-primary">
+        {CURRENCY_SYMBOL}{addOn.price}
+      </div>
+    </div>
+  ))}
+</CardContent>
+
             </Card>
 
             {/* Contact Information */}
@@ -413,17 +447,17 @@ export default function BookingPage() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="name">Full Name *</Label>
-                    <Input id="name" placeholder="John Smith" className="mt-1.5"  value={contactName}  onChange={(e) => setContactName(e.target.value)}/>
+                    <Input id="name" placeholder="John Smith" className="mt-1.5" value={contactName} onChange={(e) => setContactName(e.target.value)} />
                   </div>
                   <div>
                     <Label htmlFor="email">Email Address *</Label>
-                    <Input id="email" type="email" placeholder="john@email.com"  value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <Input id="email" type="email" placeholder="john@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
-                 </div>
+                </div>
 
                 <div>
                   <Label htmlFor="phone">Phone Number *</Label>
-                  <Input id="phone" type="tel" placeholder="+44 7700 900000" className="mt-1.5" value={phone} onChange={(e) => setPhone(e.target.value)}/>
+                  <Input id="phone" type="tel" placeholder="+44 7700 900000" className="mt-1.5" value={phone} onChange={(e) => setPhone(e.target.value)} />
                 </div>
 
                 <div>
@@ -462,7 +496,7 @@ export default function BookingPage() {
 
           {/* Booking Summary */}
 
-<div className="lg:col-span-1">
+          <div className="lg:col-span-1">
             <Card className="sticky top-20">
               <CardHeader>
                 <CardTitle>Booking Summary</CardTitle>
@@ -484,17 +518,15 @@ export default function BookingPage() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="h-4 w-4" />
-                        {/* {selectedSlot
-                             ? availableSlots.find((s) => s.id === selectedSlot)?.name //timeSlots
-                         : "Time not selected"} */}
-                         {selectedSlot
-                                       ? (() => {
-                             const slot = availableSlots.find((s) => s.id === selectedSlot)
-                                return slot
-                             ? `${slot.slot_name} (${slot.start_time} - ${slot.end_time})`
-                                : "Time not selected"
-                                      })()
-                                : "Time not selected"}
+
+                        {selectedSlot
+                          ? (() => {
+                            const slot = availableSlots.find((s) => s.id === selectedSlot)
+                            return slot
+                              ? `${slot.slot_name} (${slot.start_time} - ${slot.end_time})`
+                              : "Time not selected"
+                          })()
+                          : "Time not selected"}
 
 
                       </div>
@@ -505,16 +537,16 @@ export default function BookingPage() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Adults × {adults}</span>
                           <span className="font-medium">
-                          {CURRENCY_SYMBOL}{(selectedBookingType.adult_price || 0) * adults}
+                            {CURRENCY_SYMBOL}{(selectedBookingType.adult_price || 0) * adults}
                           </span>
-                          
+
                         </div>
                       )}
                       {canAddChildren && children > 0 && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Children × {children}</span>
                           <span className="font-medium">{CURRENCY_SYMBOL}{(selectedBookingType.child_price || 0) * children}</span>
-                         
+
                         </div>
                       )}
                       {selectedAddOns.map((id) => {
@@ -549,14 +581,14 @@ export default function BookingPage() {
                       {depositAmount > 0 ? `Pay Deposit £${depositAmount}` : "Proceed to Payment"}
                     </Button> */}
 
-                   <Button
-                   className="w-full"
-                   size="lg"
-                  disabled={!isWithinCapacity || !selectedSlot || !visitDate}
-                 
-                   onClick={handleBooking}
-           >          Confirm Booking
-                        </Button>
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      disabled={!isWithinCapacity || !selectedSlot || !visitDate}
+
+                      onClick={handleBooking}
+                    >          Confirm Booking
+                    </Button>
 
 
                     <p className="text-xs text-center text-muted-foreground">
