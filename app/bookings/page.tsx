@@ -15,17 +15,59 @@ export default function Page() {
   const [bookings, setBookings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
+ 
+  
   useEffect(() => {
-    const userId = localStorage.getItem("user_id")
-    if (!userId) {
+    const storedUser = localStorage.getItem("user")
+    if (!storedUser) {
       setLoading(false)
       return
     }
-
-    getMyBookings(userId)
+  
+    const user = JSON.parse(storedUser)
+  
+    getMyBookings(user.id)
       .then((data) => setBookings(Array.isArray(data) ? data : []))
       .finally(() => setLoading(false))
   }, [])
+  
+  const downloadReceipt = async (id: string) => {
+    try {
+      const token = localStorage.getItem("access_token")
+      if (!token) {
+        alert("Please login again")
+        return
+      }
+  
+      const response = await fetch(
+        `http://localhost:8000/booking/${id}/receipt`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+  
+      if (!response.ok) {
+        throw new Error("Failed to download receipt")
+      }
+  
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+  
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `receipt_${id}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+  
+    } catch (err) {
+      console.error(err)
+      alert("Receipt download failed")
+    }
+  }
+  
 
   return (
     <div className="min-h-screen bg-background">
@@ -113,7 +155,11 @@ export default function Page() {
                   <div className="text-2xl font-bold text-primary">
                     Total: ₹{booking.total_amount}
                   </div>
-                  <Button variant="outline" size="sm">
+                  {/* <Button variant="outline" size="sm"> */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => downloadReceipt(booking.id)} >
                     <Download className="mr-2 h-4 w-4" />
                     Download Receipt
                   </Button>

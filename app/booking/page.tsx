@@ -16,7 +16,9 @@ import { CalendarIcon, Users, Clock, Plus, Minus, AlertCircle } from "lucide-rea
 import { getAddons } from "@/src/services/addon.services"
 
 import { getBookingTypes } from "@/src/services/booking.services"
-import { createBooking } from "@/src/services/bookingCreate.services"
+// import { createBooking } from "@/src/services/bookingCreate.services"
+import { api } from "@/src/services/api"
+
 import { useRouter } from "next/navigation"
 
 // ⛔ UI DATA (AS IT IS)
@@ -46,6 +48,7 @@ export default function BookingPage() {
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([])
   const [selectedSlot, setSelectedSlot] = useState("")
 
+  const [preferredContact, setPreferredContact] = useState("email")
 
   // 🔥 LOGIC STATE (ADDED – UI SAME)
   const [visitDate, setVisitDate] = useState("")
@@ -120,23 +123,24 @@ export default function BookingPage() {
     return bookingCost + addOnsCost
   }
 
-
-
   // 🔥 FINAL BOOKING LOGIC
+  
+
   const handleBooking = async () => {
-    const userId = localStorage.getItem("user_id")
-    if (!userId) {
+    const token = localStorage.getItem("access_token")
+    if (!token) {
       alert("Please login first")
       return
     }
-
+  
     if (!selectedType || !selectedSlot || !visitDate) {
       alert("Please complete booking details")
       return
-    }  
+    }
+  
     try {
-      const res = await createBooking({
-        user_id: userId,
+      await api.post("/booking/confirm", {
+        // user_id: userId,
         booking_type_id: selectedType,
         time_slot_id: selectedSlot,
         visit_date: visitDate,
@@ -146,18 +150,18 @@ export default function BookingPage() {
         contact_name: contactName,
         contact_email: email,
         contact_phone: phone,
-        preferred_contact: "email",
+        preferred_contact: preferredContact,
         notes,
       })
-      alert("✅ Your booking has been confirmed")
-      router.push("/bookings")
-    } catch (err) {
-      alert("Booking failed")
-    }
-    }
-
-    
   
+      alert("✅ Booking confirmed! Confirmation email has been sent.")
+      router.push("/bookings")
+    } catch (err: any) {
+      alert(err?.message || "Booking failed")
+    }
+  }
+  
+
   
   return (
     <div className="min-h-screen bg-background">
@@ -428,16 +432,22 @@ export default function BookingPage() {
 
                 <div>
                   <Label htmlFor="communication">Preferred Communication</Label>
-                  <Select defaultValue="email">
-                    <SelectTrigger id="communication" className="mt-1.5">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="sms">SMS</SelectItem>
-                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    </SelectContent>
-                  </Select>
+                   {/* <Select defaultValue="email">  */}
+                  
+                          <Select
+                              value={preferredContact}
+                                onValueChange={(v) => setPreferredContact(v)}
+                             >
+                                   <SelectTrigger id="communication" className="mt-1.5">
+                                <SelectValue />
+                                </SelectTrigger>
+                                 <SelectContent>
+                                      <SelectItem value="email">Email</SelectItem>
+                                    <SelectItem value="sms">SMS</SelectItem>
+                                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                                  </SelectContent>
+                                         </Select>
+
                 </div>
 
                 <div>
@@ -447,6 +457,8 @@ export default function BookingPage() {
                     placeholder="Any dietary restrictions, accessibility needs, or special requests..."
                     className="mt-1.5 resize-none"
                     rows={3}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
                   />
                 </div>
 

@@ -36,20 +36,48 @@ export default function AdminPage() {
   const router = useRouter()
 
   // 🔐 ADMIN ROUTE GUARD - CHANGED: Normalize role comparison to handle case variations
-  useEffect(() => {
-    const token = localStorage.getItem("token")
-     const role = Number(localStorage.getItem("role"))
+//   useEffect(() => {
+//     const token = localStorage.getItem("token")
+//      const role = Number(localStorage.getItem("role"))
 
-// ADMIN = 1
-     if (!token || role !== 1) {
-  router.replace("/login")
-    }
-  }, [router])
+// // ADMIN = 1
+//      if (!token || role !== 1) {
+//   router.replace("/login")
+//     }
+//   }, [router])
+
+useEffect(() => {
+  const token = localStorage.getItem("access_token")
+  const role = localStorage.getItem("role")
+
+  if (!token) {
+    router.replace("/login")
+    return
+  }
+
+  if (role !== "1") {
+    router.replace("/")
+  }
+}, [router])
+
 
   useEffect(() => {
     const fetchAdminBookings = async () => {
       try {
-        const res = await fetch("http://localhost:8000/admin/bookings")
+        // const res = await fetch("http://localhost:8000/admin/bookings")
+      //   const token = localStorage.getItem("access_token")
+      //   const res = await fetch("http://localhost:8000/admin/bookings", {
+      //     headers: {
+      //     Authorization: `Bearer ${token}`
+      //   }
+      // })
+      const token = localStorage.getItem("access_token")
+         const res = await fetch("http://localhost:8000/admin/bookings", {
+             headers: {
+              Authorization: `Bearer ${token}`
+           }
+             })
+
         const data = await res.json()
         setBookings(data)
       } catch (err) {
