@@ -14,6 +14,7 @@ import { api } from "./api"
 export const createBookingType = async (payload: {
   name: string
   description: string
+  icon: string   
   adult_price: number
   child_price: number
   total_capacity: number
@@ -47,9 +48,11 @@ export const getAdminBookingTypes = async () => {
     childPrice: Number(t.child_price ?? 0),
     totalCapacity: Number(t.total_capacity ?? 0),
     features: Array.isArray(t.features) ? t.features : [],
-    is_active: t.is_active === true, // ✅ ONLY THIS
-    icon: t.icon,
-  }))
+    is_active: t.is_active === true,    
+    icon: t.icon ? t.icon.trim() : "Users",
+
+
+    }))
 }
 
 
@@ -61,6 +64,7 @@ export const updateBookingType = async (
   payload: {
     name: string
     description: string
+    icon: string
     adult_price: number
     child_price: number
     total_capacity: number
