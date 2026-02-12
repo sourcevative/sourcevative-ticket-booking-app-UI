@@ -168,8 +168,7 @@ export default function BookingTypesPage() {
       const bookingTypeRes = await createBookingType({
         name: formData.name,
         description: formData.description,
-        description: formData.description,  
-        // icon: formData.icon,   // ✅ THIS LINE
+      
         adult_price: formData.adultPrice,
         child_price: formData.childPrice,
         total_capacity: formData.maxCapacity,
