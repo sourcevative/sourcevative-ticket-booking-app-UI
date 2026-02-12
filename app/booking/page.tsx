@@ -17,9 +17,11 @@ import { getAddons } from "@/src/services/addon.services"
 
 import { getBookingTypes } from "@/src/services/booking.services"
 // import { createBooking } from "@/src/services/bookingCreate.services"
-import { api } from "@/src/services/api"
+// import { api } from "@/src/services/api"
 
 import { useRouter } from "next/navigation"
+import { createBooking } from "@/src/services/bookingCreate.services"
+
 
 // ⛔ UI DATA (AS IT IS)
 // import {timeSlots,  addOns } from "@/lib/sample-data"
@@ -126,21 +128,25 @@ export default function BookingPage() {
   // 🔥 FINAL BOOKING LOGIC
   
 
-  const handleBooking = async () => {
-    const token = localStorage.getItem("access_token")
-    if (!token) {
-      alert("Please login first")
-      return
-    }
   
+  const handleBooking = async () => {
     if (!selectedType || !selectedSlot || !visitDate) {
       alert("Please complete booking details")
       return
     }
   
+    if (!contactName || !email || !phone) {
+      alert("Please fill contact details")
+      return
+    }
+  
+    if (adults + children < 1) {
+      alert("At least 1 guest required")
+      return
+    }
+  
     try {
-      await api.post("/booking/confirm", {
-        // user_id: userId,
+      await createBooking({
         booking_type_id: selectedType,
         time_slot_id: selectedSlot,
         visit_date: visitDate,
@@ -154,12 +160,21 @@ export default function BookingPage() {
         notes,
       })
   
-      alert("✅ Booking confirmed! Confirmation email has been sent.")
+      alert("Booking confirmed!")
       router.push("/bookings")
+  
     } catch (err: any) {
-      alert(err?.message || "Booking failed")
+      console.error(err)
+    
+      if (err.response) {
+        alert(err.response.data?.message || "Booking failed")
+      } else {
+        alert(err.message || "Booking failed")
+      }
     }
   }
+
+    
   
 
   
@@ -590,7 +605,7 @@ export default function BookingPage() {
       </div>
     </div>
   )
-}
+} 
 
 
 

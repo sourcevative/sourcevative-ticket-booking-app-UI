@@ -1,6 +1,6 @@
 "use client"
-import { availabilityData, analyticsData, bookingTypes, timeSlots } from "@/lib/sample-data"
-
+// import { availabilityData, analyticsData, bookingTypes, timeSlots } from "@/lib/sample-data"
+import { availabilityData, analyticsData } from "@/lib/sample-data"
 import  Navbar  from "@/components/navbar"
 // import Navbar from "@/components/navbar"
 import { useEffect } from "react"
@@ -35,16 +35,7 @@ import { Textarea } from "@/components/ui/textarea"
 export default function AdminPage() {
   const router = useRouter()
 
-  // 🔐 ADMIN ROUTE GUARD - CHANGED: Normalize role comparison to handle case variations
-//   useEffect(() => {
-//     const token = localStorage.getItem("token")
-//      const role = Number(localStorage.getItem("role"))
-
-// // ADMIN = 1
-//      if (!token || role !== 1) {
-//   router.replace("/login")
-//     }
-//   }, [router])
+ 
 
 useEffect(() => {
   const token = localStorage.getItem("access_token")
@@ -64,13 +55,7 @@ useEffect(() => {
   useEffect(() => {
     const fetchAdminBookings = async () => {
       try {
-        // const res = await fetch("http://localhost:8000/admin/bookings")
-      //   const token = localStorage.getItem("access_token")
-      //   const res = await fetch("http://localhost:8000/admin/bookings", {
-      //     headers: {
-      //     Authorization: `Bearer ${token}`
-      //   }
-      // })
+     
       const token = localStorage.getItem("access_token")
          const res = await fetch("http://localhost:8000/admin/bookings", {
              headers: {
@@ -93,6 +78,8 @@ useEffect(() => {
   const [bookings, setBookings] = useState<any[]>([])
   const [loadingBookings, setLoadingBookings] = useState(true)
   const [isCreateBookingOpen, setIsCreateBookingOpen] = useState(false)
+  const [bookingTypes, setBookingTypes] = useState<any[]>([])
+  const [timeSlots, setTimeSlots] = useState<any[]>([])
 
   const [viewBooking, setViewBooking] = useState<any>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
@@ -123,42 +110,109 @@ useEffect(() => {
     }
   }
   
+  useEffect(() => {
+    const fetchBookingTypes = async () => {
+      try {
+        const token = localStorage.getItem("access_token")
+  
+        const res = await fetch("http://localhost:8000/admin/booking-types", {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+  
+        const data = await res.json()
+  
+        if (Array.isArray(data)) {
+          setBookingTypes(data)
+        } else if (Array.isArray(data?.data)) {
+          setBookingTypes(data.data)
+        } else {
+          setBookingTypes([])
+        }
+  
+      } catch (err) {
+        console.error("Booking types fetch failed", err)
+        setBookingTypes([])
+      }
+    }
+  
+    fetchBookingTypes()
+  }, [])
+  
+
+  
 
   const calculateNewBookingTotal = () => {
-    const selectedType = bookingTypes.find((type) => type.id === newBooking.bookingType)
+    const selectedType = bookingTypes.find(
+      (type) => type.id === newBooking.bookingType
+    )
+  
     if (!selectedType) return 0
-    return selectedType.adultPrice * newBooking.adults + selectedType.childPrice * newBooking.children
+  
+    const adultPrice = Number(selectedType.adult_price || 0)
+    const childPrice = Number(selectedType.child_price || 0)
+  
+    return adultPrice * Number(newBooking.adults) +
+           childPrice * Number(newBooking.children)
   }
 
-  const handleCreateBooking = () => {
-    console.log("[v0] Creating new booking:", newBooking)
-    setNewBooking({
-      customerName: "",
-      email: "",
-      phone: "",
-      bookingType: "",
-      date: "",
-      timeSlot: "",
-      adults: 1,
-      children: 0,
-      specialNotes: "",
-      paymentMethod: "cash",
-    })
-    setIsCreateBookingOpen(false)
-    alert("Booking created successfully!")
+  
+  const handleCreateBooking = async () => {
+    try {
+      const token = localStorage.getItem("access_token")
+  
+      const res = await fetch("http://localhost:8000/admin/book-walkin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          booking_type_id: newBooking.bookingType,
+          time_slot_id: newBooking.timeSlot,
+          visit_date: newBooking.date,
+          adults: newBooking.adults,
+          children: newBooking.children,
+          addons: [],
+          contact_name: newBooking.customerName,
+          contact_email: newBooking.email,
+          contact_phone: newBooking.phone,
+          preferred_contact: "phone",
+          notes: newBooking.specialNotes
+        })
+      })
+  
+      const data = await res.json()
+  
+      if (!res.ok) {
+        alert(data.detail || "Booking failed")
+        return
+      }
+  
+      alert("Walk-in booking created successfully!")
+  
+      setIsCreateBookingOpen(false)
+      window.location.reload()
+  
+    } catch (err) {
+      console.error("Walk-in booking failed", err)
+      alert("Something went wrong")
+    }
   }
+  
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full overflow-x-hidden">
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-2">Admin Dashboard</h1>
           <p className="text-muted-foreground">Manage bookings, capacity, and view analytics</p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Total Bookings</CardDescription>
@@ -213,22 +267,34 @@ useEffect(() => {
         </div>
 
         <Tabs defaultValue="bookings" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="bookings">Bookings</TabsTrigger>
-            <TabsTrigger value="capacity">Capacity</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+        
+
+            <TabsList className="w-full overflow-x-auto flex-nowrap">
+              <TabsTrigger value="bookings" className="whitespace-nowrap">
+               Bookings
+            </TabsTrigger>
+            <TabsTrigger value="capacity" className="whitespace-nowrap">
+                Capacity
+           </TabsTrigger>
+            <TabsTrigger value="analytics" className="whitespace-nowrap">
+               Analytics
+          </TabsTrigger>
+           <TabsTrigger value="settings" className="whitespace-nowrap">
+               Settings
+        </TabsTrigger>
+           </TabsList>
+
+
 
           <TabsContent value="bookings" className="space-y-4">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <CardTitle>All Bookings</CardTitle>
                     <CardDescription>Manage and view all customer bookings</CardDescription>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm">
                       <Filter className="mr-2 h-4 w-4" />
                       Filter
@@ -291,7 +357,7 @@ useEffect(() => {
                     bookings.map((booking) => (
                 <div
                  key={booking.id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 border rounded-lg"
+                    className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between p-4 border rounded-lg w-full"
         >
                   {/* LEFT */}
              <div className="flex items-center gap-4">
@@ -316,7 +382,7 @@ useEffect(() => {
                       </div>
                   </div>
            {/* RIGHT */}
-                 <div className="flex flex-col sm:items-end gap-2">
+                 <div className="flex flex-col gap-2 md:items-end w-full md:w-auto">
                     <div className="font-semibold text-primary">
                        ₹{booking.total_amount}
                </div>
@@ -715,7 +781,7 @@ useEffect(() => {
       </Dialog>
 
       <Dialog open={isCreateBookingOpen} onOpenChange={setIsCreateBookingOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95%] sm:max-w-lg md:max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Booking</DialogTitle>
             <DialogDescription>Create a booking on behalf of a customer (counter or phone booking)</DialogDescription>
@@ -724,7 +790,7 @@ useEffect(() => {
           <div className="space-y-6">
             <div className="space-y-4">
               <h3 className="font-semibold">Customer Information</h3>
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="customerName">Customer Name *</Label>
                   <Input
@@ -761,10 +827,33 @@ useEffect(() => {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="bookingType">Booking Type *</Label>
-                  <Select
+                  {/* <Select
                     value={newBooking.bookingType}
                     onValueChange={(value) => setNewBooking({ ...newBooking, bookingType: value })}
-                  >
+                  > */}
+                  <Select
+                  value={newBooking.bookingType}
+                     onValueChange={async (value) => {
+                setNewBooking({ ...newBooking, bookingType: value, timeSlot: "" })
+
+                     try {
+                  const res = await fetch(`http://localhost:8000/time-slots/${value}`)
+                     const data = await res.json()
+
+                    if (Array.isArray(data)) {
+                        setTimeSlots(data)
+                      } else if (Array.isArray(data?.data)) {
+                            setTimeSlots(data.data)
+                 } else {
+                         setTimeSlots([])
+                    }
+
+                   } catch (err) {
+                    console.error("Time slots fetch failed", err)
+                    setTimeSlots([])
+                 }
+                }}
+               >  
                     <SelectTrigger id="bookingType">
                       <SelectValue placeholder="Select booking type" />
                     </SelectTrigger>
@@ -797,11 +886,17 @@ useEffect(() => {
                       <SelectValue placeholder="Select time slot" />
                     </SelectTrigger>
                     <SelectContent>
-                      {timeSlots.map((slot) => (
+                      {/* {timeSlots.map((slot) => (
                         <SelectItem key={slot.id} value={slot.id}>
                           {slot.name} ({slot.time})
                         </SelectItem>
-                      ))}
+                      ))} */}
+                      {timeSlots.map((slot) => (
+                       <SelectItem key={slot.id} value={slot.id}>
+                              {slot.slot_name} ({slot.start_time} - {slot.end_time})
+                       </SelectItem>
+                          ))}
+
                     </SelectContent>
                   </Select>
                 </div>
