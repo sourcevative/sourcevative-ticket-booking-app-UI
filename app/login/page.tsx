@@ -31,8 +31,8 @@ export default function LoginPage() {
       const response: any = await authService.login(payload);  //res cha jagi response dela
       const res = response.data; // new line add
 
-      // const role = Number(res?.user?.role);
-      const role = Number(res?.role);
+       const role = Number(res?.user?.role);
+      // const role = Number(res?.role);
 
       if (role !== 1 && role !== 2) {
         throw new Error("Invalid role received from backend");
@@ -41,22 +41,28 @@ export default function LoginPage() {
       document.cookie = `token=${res.access_token}; path=/`;
       document.cookie = `role=${role}; path=/`;
 
-      localStorage.setItem("token", res.access_token);
-      localStorage.setItem("role", String(role));
+      // localStorage.setItem("token", res.access_token);
+      // localStorage.setItem("role", String(role));
 
-      if (res.user?.id) localStorage.setItem("user_id", String(res.user.id));
-      if (res.user?.name) localStorage.setItem("user_name", String(res.user.name));
-      if (res.user?.email) localStorage.setItem("user_email", String(res.user.email));
+      // if (res.user?.id) localStorage.setItem("user_id", String(res.user.id));
+      // if (res.user?.name) localStorage.setItem("user_name", String(res.user.name));
+      // if (res.user?.email) localStorage.setItem("user_email", String(res.user.email));
 
-      // if (role === 1) router.replace("/admin");
-      // else router.replace("/");
-      setTimeout(() => {
-        if (role === 1) {
-          router.replace("/admin");
-        } else {
-          router.replace("/");
-        }
-      }, 0);
+      // 🔑 TOKEN (axios interceptor uses this)
+        localStorage.setItem("access_token", res.access_token)
+
+     // 👤 USER OBJECT (bookings page uses this)
+        localStorage.setItem("user", JSON.stringify(res.user)) 
+
+    
+
+      // 👮 ROLE (admin/user)
+        localStorage.setItem("role", String(role))
+
+
+      if (role === 1) router.replace("/admin");
+      else router.replace("/");
+      
       
 
     } catch (err: any) {

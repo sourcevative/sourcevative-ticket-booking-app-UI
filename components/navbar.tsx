@@ -19,42 +19,77 @@ export default function Navbar() {
   const [openProfile, setOpenProfile] = useState(false)
   const [openMobile, setOpenMobile] = useState(false)
 
+ 
   useEffect(() => {
     setMounted(true)
-
-    const t = localStorage.getItem("token")
+  
+    const t = localStorage.getItem("access_token")
     const r = Number(localStorage.getItem("role"))
-    const n = localStorage.getItem("user_name") ?? ""
-    const e = localStorage.getItem("user_email") ?? ""
-
+  
+    const userRaw = localStorage.getItem("user")
+  
+    let n = ""
+    let e = ""
+  
+    if (userRaw) {
+      try {
+        const user = JSON.parse(userRaw)
+        n = user?.name || ""
+        e = user?.email || ""
+      } catch (err) {
+        console.error("Invalid user object in localStorage")
+      }
+    }
+  
     setToken(t)
     setRole(!isNaN(r) ? r : null)
     setName(n)
     setEmail(e)
+  
   }, [pathname])
+  
 
   if (!mounted) return null
+
+  // function logout() {
+  //   localStorage.clear()
+  //   setOpenProfile(false)
+  //   setOpenMobile(false)
+  //   router.replace("/login")
+  // }
 
   function logout() {
     document.cookie = "token=; path=/; max-age=0"
     document.cookie = "role=; path=/; max-age=0"
-    localStorage.clear()
+  
+    localStorage.removeItem("access_token")
+    localStorage.removeItem("role")
+    localStorage.removeItem("user")
+  
+    setToken(null)
+    setRole(null)
+    setName("")
+    setEmail("")
     setOpenProfile(false)
     setOpenMobile(false)
-    router.replace("/login")
+  
+    router.push("/")
   }
+  
+  
+  
 
   return (
     <nav className="border-b bg-white sticky top-0 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
 
-        {/* Logo */}
+        {/* LOGO */}
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
           <Calendar className="h-6 w-6 text-primary" />
           <span className="text-primary">Animal Farm</span>
         </Link>
 
-        {/* Desktop links */}
+        {/* DESKTOP LINKS */}
         <div className="hidden md:flex items-center gap-6 text-sm font-medium">
           <Link href="/">Home</Link>
           <Link href="/booking">Book Now</Link>
@@ -62,22 +97,23 @@ export default function Navbar() {
           {token && role === 1 && <Link href="/admin">Admin</Link>}
         </div>
 
-        {/* Desktop right */}
+        {/* DESKTOP RIGHT */}
         <div className="hidden md:flex items-center gap-3 relative">
           {!token ? (
             <>
-              <Link href="/login">
-                <Button variant="outline">Login</Button>
-              </Link>
-              <Link href="/signup">
-                <Button>Signup</Button>
-              </Link>
+              <Button asChild variant="outline">
+                <Link href="/login">Login</Link>
+              </Button>
+
+              <Button asChild>
+                <Link href="/signup">Signup</Link>
+              </Button>
             </>
           ) : (
             <>
-              <Link href="/booking">
-                <Button variant="outline">Book Visit</Button>
-              </Link>
+              <Button asChild variant="outline">
+                <Link href="/booking">Book Visit</Link>
+              </Button>
 
               <button
                 onClick={() => setOpenProfile(!openProfile)}
@@ -103,35 +139,27 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile menu button */}
-        <button
-          className="md:hidden"
-          onClick={() => setOpenMobile(!openMobile)}
-        >
+        {/* MOBILE MENU BUTTON */}
+        <button className="md:hidden" onClick={() => setOpenMobile(!openMobile)}>
           {openMobile ? <X /> : <Menu />}
         </button>
       </div>
 
-      {/* 🔥 FIXED MOBILE MENU – STACKED */}
+      {/* MOBILE MENU */}
       {openMobile && (
         <div className="md:hidden border-t bg-white px-4 py-4 flex flex-col gap-3 text-sm font-medium">
 
-          <Link href="/" className="py-2" onClick={() => setOpenMobile(false)}>
-            Home
-          </Link>
-
-          <Link href="/booking" className="py-2" onClick={() => setOpenMobile(false)}>
-            Book Now
-          </Link>
+          <Link href="/" onClick={() => setOpenMobile(false)}>Home</Link>
+          <Link href="/booking" onClick={() => setOpenMobile(false)}>Book Now</Link>
 
           {token && (
-            <Link href="/bookings" className="py-2" onClick={() => setOpenMobile(false)}>
+            <Link href="/bookings" onClick={() => setOpenMobile(false)}>
               My Bookings
             </Link>
           )}
 
           {token && role === 1 && (
-            <Link href="/admin" className="py-2" onClick={() => setOpenMobile(false)}>
+            <Link href="/admin" onClick={() => setOpenMobile(false)}>
               Admin
             </Link>
           )}
@@ -139,19 +167,16 @@ export default function Navbar() {
           <div className="pt-3 border-t flex flex-col gap-2">
             {!token ? (
               <>
-                <Link href="/login" onClick={() => setOpenMobile(false)}>
-                  <Button variant="outline" className="w-full">Login</Button>
-                </Link>
-                <Link href="/signup" onClick={() => setOpenMobile(false)}>
-                  <Button className="w-full">Signup</Button>
-                </Link>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/login">Login</Link>
+                </Button>
+
+                <Button asChild className="w-full">
+                  <Link href="/signup">Signup</Link>
+                </Button>
               </>
             ) : (
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={logout}
-              >
+              <Button variant="destructive" className="w-full" onClick={logout}>
                 Logout
               </Button>
             )}
@@ -161,3 +186,4 @@ export default function Navbar() {
     </nav>
   )
 }
+
