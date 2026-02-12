@@ -5,7 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 // import  { Navbar } from "@/components/navbar"
 import Navbar from "@/components/navbar";
-import { Calendar, Users, Cake, GraduationCap, Bus, Star, Clock, MapPin, Phone, Mail } from "lucide-react"
+import {
+  Calendar, UsersRound, Users, Cake, GraduationCap, Bus, Star, Clock, MapPin, Phone, Mail, PartyPopper,
+  IceCream,
+  Music,
+  Gift,
+  Camera,
+  Footprints,
+} from "lucide-react"
 // import { bookingTypes } from "@/lib/sample-data"
 import { useEffect, useState } from "react"
 import { getBookingTypes } from "@/src/services/booking.services"
@@ -30,6 +37,21 @@ export default function HomePage() {
 
     loadBookingTypes()
   }, [])
+  const iconMap: Record<string, any> = {
+    Users,
+    UsersRound,
+    Cake,
+    GraduationCap,
+    Bus,
+    PartyPopper,
+    IceCream,
+    Music,
+    Gift,
+    Camera,
+    Footprints,
+  }
+  
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -106,17 +128,14 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+
+
             {bookingTypes.map((type) => {
-              const IconComponent =
-                type.icon === "Users"
-                  ? Users
-                  : type.icon === "Cake"
-                    ? Cake
-                    : type.icon === "GraduationCap"
-                      ? GraduationCap
-                      : type.icon === "Bus"
-                        ? Bus
-                        : Users
+// console.log("HOME TYPES 👉", bookingTypes)
+
+              const IconComponent = iconMap[type.icon] || Users
+
 
               return (
                 <Card key={type.id} className="hover:shadow-lg transition-shadow h-full flex flex-col">
@@ -151,7 +170,7 @@ export default function HomePage() {
                     <div className="border-t pt-4 flex items-end justify-between mt-auto">
                       <div>
                         <div className="text-sm text-muted-foreground">From</div>
-                        
+
                         <div className="text-2xl font-bold text-primary">
                           {CURRENCY_SYMBOL}{type.child_price ?? type.adult_price}
                         </div>

@@ -46,17 +46,57 @@ import {
   Cake,
   GraduationCap,
   Bus,
+  IceCream,
+  Music,
+  Gift,
+  Camera,
+  PartyPopper,
+  Footprints,
 } from "lucide-react"
 
 // import { bookingTypes } from "@/lib/sample-data"
 
-const iconOptions = [
-  { value: "Users", label: "Users", icon: Users },
-  { value: "UsersRound", label: "Users Round", icon: UsersRound },
-  { value: "Cake", label: "Cake", icon: Cake },
-  { value: "GraduationCap", label: "Graduation Cap", icon: GraduationCap },
-  { value: "Bus", label: "Bus", icon: Bus },
-]
+import { LucideIcon } from "lucide-react"
+
+const iconMap: Record<string, LucideIcon> = {
+  Users: Users,
+  UsersRound: UsersRound,
+  Cake: Cake,
+  GraduationCap: GraduationCap,
+  Bus: Bus,
+  PartyPopper: PartyPopper,
+  IceCream: IceCream,
+  Music: Music,
+  Gift: Gift,
+  Camera: Camera,
+  Footprints: Footprints,
+}
+
+
+  
+  // const iconOptions = [
+  //   { value: "Users", label: "Users", icon: Users },
+  //   { value: "UsersRound", label: "Users Round", icon: UsersRound },
+  //   { value: "Cake", label: "Cake", icon: Cake },
+  //   { value: "GraduationCap", label: "Graduation Cap", icon: GraduationCap },
+  //   { value: "Bus", label: "Bus", icon: Bus },
+  //   { value: "PartyPopper", label: "Party", icon: PartyPopper },
+  //   { value: "IceCream", label: "Ice Cream", icon: IceCream },
+  //   { value: "Music", label: "Music", icon: Music },
+  //   { value: "Gift", label: "Gift", icon: Gift },
+  //   { value: "Camera", label: "Camera", icon: Camera },
+  //   { value: "Footprints", label: "Walk-In", icon: Footprints },
+  // ]
+  const iconOptions = Object.entries(iconMap).map(([key, Icon]) => ({
+    value: key,
+    label: key,
+    icon: Icon,
+  }
+
+))
+  
+
+
 
 export default function BookingTypesPage() {
   // const [types, setTypes] = useState<any[]>(bookingTypes)
@@ -92,6 +132,8 @@ export default function BookingTypesPage() {
   })
 
   useEffect(() => {
+    console.log("ADMIN TYPES 👉", types)
+
     loadBookingTypes()
   }, [])
 
@@ -143,6 +185,7 @@ export default function BookingTypesPage() {
         await updateBookingType(editingType.id, {
           name: formData.name,
           description: formData.description,
+          icon: formData.icon,  // ✅ ADD THIS
           adult_price: formData.adultPrice,
           child_price: formData.childPrice,
           total_capacity: formData.maxCapacity,
@@ -151,14 +194,15 @@ export default function BookingTypesPage() {
 
         alert("Booking type updated successfully ✅")
         // await loadBookingTypes()
-        setTypes(prev =>
-          prev.map(t =>
-            t.id === type.id
-              ? { ...t, is_active: !t.is_active }
-              : t
-          )
-        )
-        
+        // setTypes(prev =>
+        //   prev.map(t =>
+        //     t.id === type.id
+        //       ? { ...t, is_active: !t.is_active }
+        //       : t
+        //   )
+        // )
+        await loadBookingTypes()
+
         setIsDialogOpen(false)
         resetForm()
         return
@@ -168,15 +212,16 @@ export default function BookingTypesPage() {
       const bookingTypeRes = await createBookingType({
         name: formData.name,
         description: formData.description,
-      
+        icon: formData.icon,   // ✅ THIS LINE
         adult_price: formData.adultPrice,
         child_price: formData.childPrice,
         total_capacity: formData.maxCapacity,
         admin_id: "dc7df956-684d-49d6-a20b-ad85d7727bd3",
         features: formData.features.filter((f) => f.trim() !== ""),
       })
+      console.log("Create Booking Response 👉", bookingTypeRes)
 
-      const bookingTypeId = bookingTypeRes?.data?.[0]?.id
+      const bookingTypeId = bookingTypeRes?.[0]?.id
 
       if (!bookingTypeId) {
         alert("Booking Type ID missing, time slots not created")
@@ -186,6 +231,7 @@ export default function BookingTypesPage() {
       for (const slot of formData.availableSlots) {
         await createTimeSlot({
           booking_type_id: bookingTypeId,
+          slot_name: slot.id,        
           start_time: slot.startTime,
           end_time: slot.endTime,
           capacity: slot.capacity,
@@ -692,9 +738,12 @@ export default function BookingTypesPage() {
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {types.map((type) => {
-            const Icon =
-              iconOptions.find((opt) => opt.value === type.icon)?.icon || Users
-
+           console.log("ICON VALUE 👉", type.icon)
+           const normalizedIcon =
+           type.icon?.replace(/\s+/g, "").trim()
+         
+         const Icon = iconMap[normalizedIcon] || Users
+         
             return (
               <Card key={type.id} className="relative">
                 <CardHeader>
