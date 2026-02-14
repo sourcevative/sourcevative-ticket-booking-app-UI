@@ -11,110 +11,105 @@ export default function Navbar() {
   const router = useRouter()
   const pathname = usePathname()
 
-  const [mounted, setMounted] = useState(false)
   const [token, setToken] = useState<string | null>(null)
   const [role, setRole] = useState<number | null>(null)
   const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
   const [openProfile, setOpenProfile] = useState(false)
   const [openMobile, setOpenMobile] = useState(false)
 
- 
   useEffect(() => {
-    setMounted(true)
-  
     const t = localStorage.getItem("access_token")
     const r = Number(localStorage.getItem("role"))
-  
     const userRaw = localStorage.getItem("user")
-  
+
     let n = ""
-    let e = ""
-  
     if (userRaw) {
       try {
         const user = JSON.parse(userRaw)
         n = user?.name || ""
-        e = user?.email || ""
-      } catch (err) {
-        console.error("Invalid user object in localStorage")
-      }
+      } catch {}
     }
-  
+
     setToken(t)
     setRole(!isNaN(r) ? r : null)
     setName(n)
-    setEmail(e)
-  
   }, [pathname])
-  
-
-  if (!mounted) return null
-
-  // function logout() {
-  //   localStorage.clear()
-  //   setOpenProfile(false)
-  //   setOpenMobile(false)
-  //   router.replace("/login")
-  // }
 
   function logout() {
-    document.cookie = "token=; path=/; max-age=0"
-    document.cookie = "role=; path=/; max-age=0"
-  
-    localStorage.removeItem("access_token")
-    localStorage.removeItem("role")
-    localStorage.removeItem("user")
-  
-    setToken(null)
-    setRole(null)
-    setName("")
-    setEmail("")
+    localStorage.clear()
     setOpenProfile(false)
     setOpenMobile(false)
-  
     router.push("/")
   }
-  
-  
-  
+
+  const navLink = (href: string, label: string) => (
+    <Link
+      href={href}
+      className={`relative group transition duration-200 ${
+        pathname === href ? "text-primary font-semibold" : "hover:text-primary"
+      }`}
+      onClick={() => setOpenMobile(false)}
+    >
+      {label}
+      <span
+        className={`absolute left-0 -bottom-1 h-[2px] bg-primary transition-all duration-300 ${
+          pathname === href ? "w-full" : "w-0 group-hover:w-full"
+        }`}
+      />
+    </Link>
+  )
 
   return (
-    <nav className="border-b bg-white sticky top-0 z-50">
+    <nav className="border-b bg-white sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
 
         {/* LOGO */}
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-          <Calendar className="h-6 w-6 text-primary" />
-          <span className="text-primary">Animal Farm</span>
+        <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary">
+          <Calendar className="h-6 w-6" />
+          Animal Farm
         </Link>
 
-        {/* DESKTOP LINKS */}
-        <div className="hidden md:flex items-center gap-6 text-sm font-medium">
-          <Link href="/">Home</Link>
-          <Link href="/booking">Book Now</Link>
-          {token && <Link href="/bookings">My Bookings</Link>}
-          {token && role === 1 && <Link href="/admin">Admin</Link>}
+        {/* DESKTOP MENU */}
+        <div className="hidden md:flex items-center gap-8 text-sm font-medium">
+
+          {!token && (
+            <>
+              {navLink("/", "Home")}
+              {navLink("/booking", "Book Now")}
+            </>
+          )}
+
+          {token && role === 2 && (
+            <>
+              {navLink("/", "Home")}
+              {navLink("/booking", "Book Now")}
+              {navLink("/bookings", "My Bookings")}
+            </>
+          )}
+
+          {token && role === 1 && (
+            <>
+              {navLink("/admin", "Dashboard")}
+              {navLink("/admin/booking-types", "Booking Types")}
+              {navLink("/admin?tab=bookings&open=new", "New Booking")}
+            </>
+          )}
         </div>
 
         {/* DESKTOP RIGHT */}
-        <div className="hidden md:flex items-center gap-3 relative">
+        <div className="hidden md:flex items-center gap-4">
+
           {!token ? (
             <>
               <Button asChild variant="outline">
                 <Link href="/login">Login</Link>
               </Button>
-
               <Button asChild>
                 <Link href="/signup">Signup</Link>
               </Button>
             </>
           ) : (
             <>
-              <Button asChild variant="outline">
-                <Link href="/booking">Book Visit</Link>
-              </Button>
-
               <button
                 onClick={() => setOpenProfile(!openProfile)}
                 className="w-9 h-9 rounded-full bg-green-700 text-white flex items-center justify-center font-semibold"
@@ -123,10 +118,8 @@ export default function Navbar() {
               </button>
 
               {openProfile && (
-                <div className="absolute right-0 top-14 w-56 bg-white border rounded-lg shadow-md p-3">
-                  <p className="font-semibold text-sm">{name || "User"}</p>
-                  <p className="text-xs text-gray-500 mb-2">{email || "—"}</p>
-                  <div className="border-t my-2" />
+                <div className="absolute right-4 top-16 w-48 bg-white border rounded-lg shadow-md p-3">
+                  <p className="font-semibold text-sm mb-2">{name || "User"}</p>
                   <button
                     onClick={logout}
                     className="flex items-center gap-2 text-sm text-red-600 hover:underline"
@@ -139,7 +132,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* MOBILE MENU BUTTON */}
+        {/* MOBILE BUTTON */}
         <button className="md:hidden" onClick={() => setOpenMobile(!openMobile)}>
           {openMobile ? <X /> : <Menu />}
         </button>
@@ -147,43 +140,55 @@ export default function Navbar() {
 
       {/* MOBILE MENU */}
       {openMobile && (
-        <div className="md:hidden border-t bg-white px-4 py-4 flex flex-col gap-3 text-sm font-medium">
+        <div className="md:hidden border-t bg-white px-4 py-4 flex flex-col gap-4 text-sm font-medium">
 
-          <Link href="/" onClick={() => setOpenMobile(false)}>Home</Link>
-          <Link href="/booking" onClick={() => setOpenMobile(false)}>Book Now</Link>
+          {!token && (
+            <>
+              {navLink("/", "Home")}
+              {navLink("/booking", "Book Now")}
 
-          {token && (
-            <Link href="/bookings" onClick={() => setOpenMobile(false)}>
-              My Bookings
-            </Link>
-          )}
-
-          {token && role === 1 && (
-            <Link href="/admin" onClick={() => setOpenMobile(false)}>
-              Admin
-            </Link>
-          )}
-
-          <div className="pt-3 border-t flex flex-col gap-2">
-            {!token ? (
-              <>
+              {/* 🔥 FIX: Login / Signup added for mobile */}
+              <div className="pt-4 border-t flex flex-col gap-2">
                 <Button asChild variant="outline" className="w-full">
-                  <Link href="/login">Login</Link>
+                  <Link href="/login" onClick={() => setOpenMobile(false)}>Login</Link>
                 </Button>
 
                 <Button asChild className="w-full">
-                  <Link href="/signup">Signup</Link>
+                  <Link href="/signup" onClick={() => setOpenMobile(false)}>Signup</Link>
                 </Button>
-              </>
-            ) : (
-              <Button variant="destructive" className="w-full" onClick={logout}>
+              </div>
+            </>
+          )}
+
+          {token && role === 2 && (
+            <>
+              {navLink("/", "Home")}
+              {navLink("/booking", "Book Now")}
+              {navLink("/bookings", "My Bookings")}
+
+              <Button variant="destructive" className="mt-2" onClick={logout}>
                 Logout
               </Button>
-            )}
-          </div>
+            </>
+          )}
+
+          {token && role === 1 && (
+            <>
+              {navLink("/admin", "Dashboard")}
+              {navLink("/admin/booking-types", "Booking Types")}
+              {navLink("/admin?tab=bookings&open=new", "New Booking")}
+
+              <Button variant="destructive" className="mt-2" onClick={logout}>
+                Logout
+              </Button>
+            </>
+          )}
         </div>
       )}
     </nav>
   )
 }
+
+
+
 

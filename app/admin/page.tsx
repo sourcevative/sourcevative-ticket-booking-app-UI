@@ -1,11 +1,11 @@
 "use client"
 // import { availabilityData, analyticsData, bookingTypes, timeSlots } from "@/lib/sample-data"
 import { availabilityData, analyticsData } from "@/lib/sample-data"
-import  Navbar  from "@/components/navbar"
-// import Navbar from "@/components/navbar"
+// import  Navbar  from "@/components/navbar"
 import { useEffect } from "react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useRouter } from "next/navigation"
-
+import { getAddons } from "@/src/services/addon.services"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -31,9 +31,27 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useSearchParams } from "next/navigation"
 
 export default function AdminPage() {
   const router = useRouter()
+
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState("bookings")
+
+
+useEffect(() => {
+  const tab = searchParams.get("tab")
+  const open = searchParams.get("open")
+
+  if (tab) {
+    setActiveTab(tab)
+  }
+
+  if (open === "new") {
+    setIsCreateBookingOpen(true)
+  }
+}, [searchParams])
 
  
 
@@ -96,6 +114,15 @@ useEffect(() => {
     paymentMethod: "cash",
   })
 
+  const [addOns, setAddOns] = useState<any[]>([])
+  const [selectedAddOns, setSelectedAddOns] = useState<string[]>([])
+    useEffect(() => {
+    getAddons()
+      .then(setAddOns)
+      .catch(() => setAddOns([]))
+    }, [])
+  
+
 
   const fetchBookingDetails = async (id: string) => {
     try {
@@ -141,8 +168,23 @@ useEffect(() => {
   }, [])
   
 
-  
+  //this code is old
 
+  // const calculateNewBookingTotal = () => {
+  //   const selectedType = bookingTypes.find(
+  //     (type) => type.id === newBooking.bookingType
+  //   )
+  
+  //   if (!selectedType) return 0
+  
+  //   const adultPrice = Number(selectedType.adult_price || 0)
+  //   const childPrice = Number(selectedType.child_price || 0)
+  
+  //   return adultPrice * Number(newBooking.adults) +
+  //          childPrice * Number(newBooking.children)
+  // }
+
+  //this is new code of calculate 
   const calculateNewBookingTotal = () => {
     const selectedType = bookingTypes.find(
       (type) => type.id === newBooking.bookingType
@@ -153,9 +195,18 @@ useEffect(() => {
     const adultPrice = Number(selectedType.adult_price || 0)
     const childPrice = Number(selectedType.child_price || 0)
   
-    return adultPrice * Number(newBooking.adults) +
-           childPrice * Number(newBooking.children)
+    const baseTotal =
+      adultPrice * Number(newBooking.adults) +
+      childPrice * Number(newBooking.children)
+  
+    const addonsTotal = selectedAddOns.reduce((sum, id) => {
+      const addon = addOns.find((a) => a.id === id)
+      return sum + (addon?.price || 0)
+    }, 0)
+  
+    return baseTotal + addonsTotal
   }
+  
 
   
   const handleCreateBooking = async () => {
@@ -174,7 +225,7 @@ useEffect(() => {
           visit_date: newBooking.date,
           adults: newBooking.adults,
           children: newBooking.children,
-          addons: [],
+          addons: selectedAddOns,
           contact_name: newBooking.customerName,
           contact_email: newBooking.email,
           contact_phone: newBooking.phone,
@@ -204,7 +255,7 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      <Navbar />
+      {/* <Navbar /> */}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full overflow-x-hidden">
         <div className="mb-8">
@@ -229,7 +280,7 @@ useEffect(() => {
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Total Revenue</CardDescription>
-              <CardTitle className="text-3xl">£{analyticsData.totalRevenue.toLocaleString()}</CardTitle>
+              <CardTitle className="text-3xl">₹{analyticsData.totalRevenue.toLocaleString()}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -266,7 +317,10 @@ useEffect(() => {
           </Card>
         </div>
 
-        <Tabs defaultValue="bookings" className="space-y-6">
+        {/* <Tabs defaultValue="bookings" className="space-y-6"> */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+
+
         
 
             <TabsList className="w-full overflow-x-auto flex-nowrap">
@@ -654,7 +708,7 @@ useEffect(() => {
       </div>
 
       <Dialog open={loadingDetails || !!viewBooking} onOpenChange={(open) => !open && setViewBooking(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Booking Details</span>
@@ -666,116 +720,148 @@ useEffect(() => {
           </DialogHeader>
 
           {!loadingDetails && viewBooking && (
-            <div className="space-y-6">
+          <div className="space-y-8">
+
+          {/* CUSTOMER INFO */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Customer Information
+            </h3>
+        
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/40 rounded-xl">
               <div>
-                <h3 className="font-semibold mb-3 flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Customer Information
-                </h3>
-                <div className="grid sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Name</div>
-                    <div className="font-medium">{viewBooking.contact_name}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Email</div>
-                    <div className="font-medium flex items-center gap-2">
-                      <Mail className="h-3 w-3" />
-                      {viewBooking.contact_email}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Phone</div>
-                    <div className="font-medium flex items-center gap-2">
-                      <Phone className="h-3 w-3" />
-                      {viewBooking.contact_phone}
-                    </div>
-                  </div>
-                </div>
+                <p className="text-sm text-muted-foreground">Name</p>
+                <p className="font-medium">{viewBooking.contact_name}</p>
               </div>
-
+        
               <div>
-                <h3 className="font-semibold mb-3 flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Booking Details
-                </h3>
-                <div className="grid sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Booking Type</div>
-                    {/* <div className="font-medium capitalize">
-                      {bookingTypes.find((t) => t.id === viewBooking.booking_type)?.name || viewBooking.booking_type}
-                    </div> */}
-                    <div className="font-medium capitalize">
-                           {viewBooking.booking_types?.name}
-                        </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Date</div>
-                    <div className="font-medium">
-                      {new Date(viewBooking.visit_date).toLocaleDateString("en-GB", {
-                        weekday: "long",
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Time Slot</div>
-                    <div className="font-medium flex items-center gap-2 capitalize">
-                      <Clock className="h-3 w-3" />
-                      {viewBooking.time_slots.start_time} - {viewBooking.time_slots.end_time}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Number of Guests</div>
-                    <div className="font-medium">
-                      {viewBooking.adults} Adults, {viewBooking.children} Children
-                    </div>
-                  </div>
-                </div>
+                <p className="text-sm text-muted-foreground">Email</p>
+                <p className="font-medium break-all">
+                  {viewBooking.contact_email}
+                </p>
               </div>
-
-              <div>
-                <h3 className="font-semibold mb-3 flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Payment Information
-                </h3>
-                <div className="p-4 bg-muted/50 rounded-lg space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Total Amount</span>
-                    <span className="text-2xl font-bold text-primary">₹{viewBooking.total_amount}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Payment Status</span>
-                    <Badge variant={viewBooking.payment_status === "paid" ? "default" : "outline"}>
-                      {viewBooking.payment_status}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              {viewBooking.notes && (
-                <div>
-                  <h3 className="font-semibold mb-3">Special Notes</h3>
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm">{viewBooking.notes}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-4 border-t">
-                <Button variant="outline" className="flex-1 bg-transparent">
-                  Edit Booking
-                </Button>
-                <Button variant="outline" className="flex-1 bg-transparent">
-                  Send Confirmation
-                </Button>
-                <Button variant="destructive" className="flex-1">
-                  Cancel Booking
-                </Button>
+        
+              <div className="sm:col-span-2">
+                <p className="text-sm text-muted-foreground">Phone</p>
+                <p className="font-medium">
+                  {viewBooking.contact_phone}
+                </p>
               </div>
             </div>
+          </div>
+        
+        
+          {/* BOOKING INFO */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Booking Details
+            </h3>
+        
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/40 rounded-xl">
+              <div>
+                <p className="text-sm text-muted-foreground">Booking Type</p>
+                <p className="font-medium capitalize">
+                  {viewBooking.booking_types?.name}
+                </p>
+              </div>
+        
+              <div>
+                <p className="text-sm text-muted-foreground">Date</p>
+                <p className="font-medium">
+                  {new Date(viewBooking.visit_date).toLocaleDateString("en-GB", {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
+        
+              <div>
+                <p className="text-sm text-muted-foreground">Time Slot</p>
+                <p className="font-medium">
+                  {viewBooking.time_slots?.start_time} - {viewBooking.time_slots?.end_time}
+                </p>
+              </div>
+        
+              <div>
+                <p className="text-sm text-muted-foreground">Guests</p>
+                <p className="font-medium">
+                  {viewBooking.adults} Adults, {viewBooking.children} Children
+                </p>
+              </div>
+            </div>
+          </div>
+        
+        
+          {/* PAYMENT */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Payment Information
+            </h3>
+        
+            <div className="p-4 bg-muted/40 rounded-xl space-y-4">
+        
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Total Amount</span>
+                <span className="text-xl font-bold text-primary">
+                  ₹{viewBooking.total_amount}
+                </span>
+              </div>
+        
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Payment Status</span>
+                <Badge
+                  variant={
+                    viewBooking.payment_status === "paid"
+                      ? "default"
+                      : "outline"
+                  }
+                >
+                  {viewBooking.payment_status}
+                </Badge>
+              </div>
+        
+            </div>
+          </div>
+        
+        
+          {/* NOTES */}
+          {viewBooking.notes && (
+            <div>
+              <h3 className="text-lg font-semibold mb-3">
+                Special Notes
+              </h3>
+        
+              <div className="p-4 bg-muted/40 rounded-xl">
+                <p className="text-sm">
+                  {viewBooking.notes}
+                </p>
+              </div>
+            </div>
+          )}
+        
+        
+          {/* ACTION BUTTONS */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+            <Button variant="outline" className="flex-1">
+              Edit Booking
+            </Button>
+        
+            <Button variant="outline" className="flex-1">
+              Send Confirmation
+            </Button>
+        
+            <Button variant="destructive" className="flex-1">
+              Cancel Booking
+            </Button>
+          </div>
+        
+        </div>
+        
           )}
         </DialogContent>
       </Dialog>
@@ -929,6 +1015,55 @@ useEffect(() => {
               </div>
             </div>
 
+            {addOns.length > 0 && (
+  <div className="space-y-4">
+    <h3 className="font-semibold">Enhance Experience</h3>
+
+    <div className="space-y-3">
+      {addOns.map((addOn) => (
+        <div
+          key={addOn.id}
+          className="flex items-start gap-3 p-3 rounded-lg border"
+        >
+          <Checkbox
+            id={`admin-addon-${addOn.id}`}
+            checked={selectedAddOns.includes(addOn.id)}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                setSelectedAddOns([...selectedAddOns, addOn.id])
+              } else {
+                setSelectedAddOns(
+                  selectedAddOns.filter((id) => id !== addOn.id)
+                )
+              }
+            }}
+          />
+
+          <div className="flex-1">
+            <Label
+              htmlFor={`admin-addon-${addOn.id}`}
+              className="font-medium cursor-pointer"
+            >
+              {addOn.name}
+            </Label>
+
+            {addOn.description && (
+              <p className="text-sm text-muted-foreground">
+                {addOn.description}
+              </p>
+            )}
+          </div>
+
+          <div className="font-semibold text-primary">
+            ₹{addOn.price}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+
             <div className="space-y-4">
               <h3 className="font-semibold">Payment Method</h3>
               <Select
@@ -962,7 +1097,7 @@ useEffect(() => {
               <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold">Total Amount:</span>
-                  <span className="text-2xl font-bold text-primary">£{calculateNewBookingTotal()}</span>
+                  <span className="text-2xl font-bold text-primary">₹{calculateNewBookingTotal()}</span>
                 </div>
               </div>
             )}

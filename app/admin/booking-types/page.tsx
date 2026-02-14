@@ -7,7 +7,7 @@ import { useState } from "react"
 // import { createBookingType } from "@/src/services/admin.services"
 import { createBookingType, createTimeSlot, updateBookingType, toggleBookingType, } from "@/src/services/admin.services"
 
-import Navbar from "@/components/navbar"
+// import Navbar from "@/components/navbar"
 import {
   Card,
   CardContent,
@@ -315,7 +315,7 @@ export default function BookingTypesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      {/* <Navbar /> */}
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
