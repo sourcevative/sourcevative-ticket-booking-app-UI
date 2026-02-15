@@ -98,6 +98,7 @@ useEffect(() => {
   const [isCreateBookingOpen, setIsCreateBookingOpen] = useState(false)
   const [bookingTypes, setBookingTypes] = useState<any[]>([])
   const [timeSlots, setTimeSlots] = useState<any[]>([])
+  const [dashboard, setDashboard] = useState<any>(null)
 
   const [viewBooking, setViewBooking] = useState<any>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
@@ -127,7 +128,18 @@ useEffect(() => {
   const fetchBookingDetails = async (id: string) => {
     try {
       setLoadingDetails(true)
-      const res = await fetch(`http://localhost:8000/admin/bookings/${id}`)
+      // const res = await fetch(`http://localhost:8000/admin/bookings/${id}`)
+      const token = localStorage.getItem("access_token")
+
+const res = await fetch(
+  `http://localhost:8000/admin/bookings/${id}`,
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+)
+
       const data = await res.json()
       setViewBooking(data)
     } catch (err) {
@@ -252,6 +264,65 @@ useEffect(() => {
     }
   }
   
+  const handleAdminCancel = async (bookingId: string) => {
+    try {
+      const token = localStorage.getItem("access_token")
+  
+      const res = await fetch(
+        `http://localhost:8000/admin/cancel-booking/${bookingId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+  
+      const data = await res.json()
+  
+      if (!res.ok) {
+        alert(data.detail || "Cancel failed")
+        return
+      }
+  
+      alert("Booking cancelled successfully")
+  
+      // UI update (remove from list)
+      setBookings(prev => prev.filter(b => b.id !== bookingId))
+  
+      setViewBooking(null)
+  
+    } catch (err) {
+      console.error("Cancel failed", err)
+      alert("Something went wrong")
+    }
+  }
+  
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const token = localStorage.getItem("access_token")
+  
+        const res = await fetch(
+          "http://localhost:8000/admin/dashboard",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        )
+  
+        const data = await res.json()
+        setDashboard(data)
+  
+      } catch (err) {
+        console.error("Dashboard fetch failed", err)
+      }
+    }
+  
+    fetchDashboard()
+  }, [])
+  
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -267,7 +338,7 @@ useEffect(() => {
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Total Bookings</CardDescription>
-              <CardTitle className="text-3xl">{analyticsData.totalBookings}</CardTitle>
+              <CardTitle className="text-3xl">{dashboard?.total_bookings || 0}              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -280,7 +351,7 @@ useEffect(() => {
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Total Revenue</CardDescription>
-              <CardTitle className="text-3xl">₹{analyticsData.totalRevenue.toLocaleString()}</CardTitle>
+              <CardTitle className="text-3xl">₹{dashboard?.total_revenue?.toLocaleString() || 0}              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -293,7 +364,7 @@ useEffect(() => {
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Avg. Group Size</CardDescription>
-              <CardTitle className="text-3xl">{analyticsData.averageGroupSize}</CardTitle>
+              <CardTitle className="text-3xl">{dashboard?.avg_group_size || 0}              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -306,7 +377,8 @@ useEffect(() => {
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Cancellation Rate</CardDescription>
-              <CardTitle>{analyticsData.cancellationRate}%</CardTitle>
+              <CardTitle>{dashboard?.cancellation_rate || 0}%
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -855,9 +927,17 @@ useEffect(() => {
               Send Confirmation
             </Button>
         
-            <Button variant="destructive" className="flex-1">
+            {/* <Button variant="destructive" className="flex-1">
               Cancel Booking
+            </Button> */}
+            <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={() => handleAdminCancel(viewBooking.id)}
+               >
+                Cancel Booking
             </Button>
+
           </div>
         
         </div>
