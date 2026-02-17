@@ -23,7 +23,13 @@ export const createBookingType = async (payload: {
 }) => {
   const res = await api.post("/admin/booking-type", payload)
   // return res.data
-  return res.data?.data ?? res.data
+  // return res.data?.data ?? res.data
+  return Array.isArray(res.data?.data)
+  ? res.data.data
+  : Array.isArray(res.data)
+  ? res.data
+  : []
+
 
 }
 
@@ -108,5 +114,41 @@ export const createTimeSlot = async (payload: {
   capacity: number
 }) => {
   const res = await api.post("/admin/time-slot", payload)
+  return res.data
+}
+
+/* ===========================
+   ADMIN – BOOKINGS FILTER
+=========================== */
+
+export const filterBookings = async (params: {
+  from_date?: string
+  to_date?: string
+  booking_source?: string
+  booking_type_id?: string
+  time_slot_id?: string
+  payment_received?: boolean
+  status?: string
+}) => {
+  const res = await api.get("/admin/bookings/filter", {
+    params,
+  })
+
+  return res.data?.data ?? res.data
+}
+
+/* ===========================
+   ADMIN – BOOKINGS EXPORT
+=========================== */
+
+export const exportBookings = async (
+  format: "csv" | "xlsx",
+  params: any
+) => {
+  const res = await api.get("/admin/bookings/export", {
+    params: { format, ...params },
+    responseType: "blob", // VERY IMPORTANT
+  })
+
   return res.data
 }

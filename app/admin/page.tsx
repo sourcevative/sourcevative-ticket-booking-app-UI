@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { filterBookings, exportBookings } from "@/src/services/admin.services"
+import { api } from "@/src/services/api"
 import {
   Calendar,
   TrendingUp,
@@ -40,66 +42,68 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("bookings")
 
 
-useEffect(() => {
-  const tab = searchParams.get("tab")
-  const open = searchParams.get("open")
+  useEffect(() => {
+    const tab = searchParams.get("tab")
+    const open = searchParams.get("open")
 
-  if (tab) {
-    setActiveTab(tab)
-  }
+    if (tab) {
+      setActiveTab(tab)
+    }
 
-  if (open === "new") {
-    setIsCreateBookingOpen(true)
-  }
-}, [searchParams])
+    if (open === "new") {
+      setIsCreateBookingOpen(true)
+    }
+  }, [searchParams])
 
- 
 
-useEffect(() => {
-  const token = localStorage.getItem("access_token")
-  const role = localStorage.getItem("role")
 
-  if (!token) {
-    router.replace("/login")
-    return
-  }
+  useEffect(() => {
+    const token = localStorage.getItem("access_token")
+    const role = localStorage.getItem("role")
 
-  if (role !== "1") {
-    router.replace("/")
-  }
-}, [router])
+    if (!token) {
+      router.replace("/login")
+      return
+    }
+
+    if (role !== "1") {
+      router.replace("/")
+    }
+  }, [router])
+
+
 
 
   useEffect(() => {
     const fetchAdminBookings = async () => {
       try {
-     
-      const token = localStorage.getItem("access_token")
-         const res = await fetch("http://localhost:8000/admin/bookings", {
-             headers: {
-              Authorization: `Bearer ${token}`
-           }
-             })
+        const res = await api.get("/admin/bookings")
 
-        const data = await res.json()
+        const data = Array.isArray(res.data)
+          ? res.data
+          : res.data?.data || []
+
         setBookings(data)
+
       } catch (err) {
         console.error("Admin bookings fetch failed", err)
       } finally {
         setLoadingBookings(false)
       }
     }
-  
+
     fetchAdminBookings()
   }, [])
-  
+
+
   const [bookings, setBookings] = useState<any[]>([])
   const [loadingBookings, setLoadingBookings] = useState(true)
   const [isCreateBookingOpen, setIsCreateBookingOpen] = useState(false)
   const [bookingTypes, setBookingTypes] = useState<any[]>([])
   const [timeSlots, setTimeSlots] = useState<any[]>([])
   const [dashboard, setDashboard] = useState<any>(null)
-
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [viewBooking, setViewBooking] = useState<any>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [newBooking, setNewBooking] = useState({
@@ -117,212 +121,233 @@ useEffect(() => {
 
   const [addOns, setAddOns] = useState<any[]>([])
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([])
-    useEffect(() => {
+  useEffect(() => {
     getAddons()
       .then(setAddOns)
       .catch(() => setAddOns([]))
-    }, [])
-  
+  }, [])
+
+
 
 
   const fetchBookingDetails = async (id: string) => {
     try {
       setLoadingDetails(true)
-      // const res = await fetch(`http://localhost:8000/admin/bookings/${id}`)
-      const token = localStorage.getItem("access_token")
 
-const res = await fetch(
-  `http://localhost:8000/admin/bookings/${id}`,
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-)
+      const res = await api.get(`/admin/bookings/${id}`)
 
-      const data = await res.json()
+      const data = res.data?.data ?? res.data
       setViewBooking(data)
+
     } catch (err) {
       console.error("Booking details fetch failed", err)
     } finally {
       setLoadingDetails(false)
     }
   }
-  
+
+
   useEffect(() => {
     const fetchBookingTypes = async () => {
       try {
-        const token = localStorage.getItem("access_token")
-  
-        const res = await fetch("http://localhost:8000/admin/booking-types", {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        })
-  
-        const data = await res.json()
-  
-        if (Array.isArray(data)) {
-          setBookingTypes(data)
-        } else if (Array.isArray(data?.data)) {
-          setBookingTypes(data.data)
-        } else {
-          setBookingTypes([])
-        }
-  
+        const res = await api.get("/admin/booking-types")
+
+        const data = Array.isArray(res.data)
+          ? res.data
+          : res.data?.data || []
+
+        setBookingTypes(data)
+
       } catch (err) {
         console.error("Booking types fetch failed", err)
         setBookingTypes([])
       }
     }
-  
+
     fetchBookingTypes()
   }, [])
-  
 
-  //this code is old
 
-  // const calculateNewBookingTotal = () => {
-  //   const selectedType = bookingTypes.find(
-  //     (type) => type.id === newBooking.bookingType
-  //   )
-  
-  //   if (!selectedType) return 0
-  
-  //   const adultPrice = Number(selectedType.adult_price || 0)
-  //   const childPrice = Number(selectedType.child_price || 0)
-  
-  //   return adultPrice * Number(newBooking.adults) +
-  //          childPrice * Number(newBooking.children)
-  // }
 
   //this is new code of calculate 
   const calculateNewBookingTotal = () => {
     const selectedType = bookingTypes.find(
       (type) => type.id === newBooking.bookingType
     )
-  
+
     if (!selectedType) return 0
-  
+
     const adultPrice = Number(selectedType.adult_price || 0)
     const childPrice = Number(selectedType.child_price || 0)
-  
+
     const baseTotal =
       adultPrice * Number(newBooking.adults) +
       childPrice * Number(newBooking.children)
-  
+
     const addonsTotal = selectedAddOns.reduce((sum, id) => {
       const addon = addOns.find((a) => a.id === id)
       return sum + (addon?.price || 0)
     }, 0)
-  
+
     return baseTotal + addonsTotal
   }
-  
 
-  
   const handleCreateBooking = async () => {
     try {
-      const token = localStorage.getItem("access_token")
-  
-      const res = await fetch("http://localhost:8000/admin/book-walkin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          booking_type_id: newBooking.bookingType,
-          time_slot_id: newBooking.timeSlot,
-          visit_date: newBooking.date,
-          adults: newBooking.adults,
-          children: newBooking.children,
-          addons: selectedAddOns,
-          contact_name: newBooking.customerName,
-          contact_email: newBooking.email,
-          contact_phone: newBooking.phone,
-          preferred_contact: "phone",
-          notes: newBooking.specialNotes
-        })
+      setErrorMessage(null)
+
+      await api.post("/admin/book-walkin", {
+        booking_type_id: newBooking.bookingType,
+        time_slot_id: newBooking.timeSlot,
+        visit_date: newBooking.date,
+        adults: newBooking.adults,
+        children: newBooking.children,
+        addons: selectedAddOns,
+        contact_name: newBooking.customerName,
+        contact_email: newBooking.email,
+        contact_phone: newBooking.phone,
+        preferred_contact: "phone",
+        notes: newBooking.specialNotes
       })
-  
-      const data = await res.json()
-  
-      if (!res.ok) {
-        alert(data.detail || "Booking failed")
-        return
-      }
-  
-      alert("Walk-in booking created successfully!")
-  
+
       setIsCreateBookingOpen(false)
-      window.location.reload()
-  
-    } catch (err) {
-      console.error("Walk-in booking failed", err)
-      alert("Something went wrong")
+      setSuccessMessage("Booking created successfully")
+
+      // 🔥 Always re-sync from DB
+      const refreshed = await api.get("/admin/bookings")
+
+      const freshData = Array.isArray(refreshed.data)
+        ? refreshed.data
+        : refreshed.data?.data || []
+
+      setBookings(freshData)
+
+      setTimeout(() => setSuccessMessage(null), 3000)
+
+    } catch (err: any) {
+      const message =
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        err.message ||
+        "Booking creation failed"
+
+      setErrorMessage(message)
+
+      setTimeout(() => setErrorMessage(null), 4000)
     }
   }
-  
+
+
+
   const handleAdminCancel = async (bookingId: string) => {
     try {
-      const token = localStorage.getItem("access_token")
-  
-      const res = await fetch(
-        `http://localhost:8000/admin/cancel-booking/${bookingId}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-  
-      const data = await res.json()
-  
-      if (!res.ok) {
-        alert(data.detail || "Cancel failed")
-        return
-      }
-  
-      alert("Booking cancelled successfully")
-  
-      // UI update (remove from list)
-      setBookings(prev => prev.filter(b => b.id !== bookingId))
-  
+      await api.post(`/admin/cancel-booking/${bookingId}`)
+
+      const refreshed = await api.get("/admin/bookings")
+
+      const freshData = Array.isArray(refreshed.data)
+        ? refreshed.data
+        : refreshed.data?.data || []
+
+      setBookings(freshData)
+
       setViewBooking(null)
-  
-    } catch (err) {
-      console.error("Cancel failed", err)
-      alert("Something went wrong")
+      setSuccessMessage("Booking cancelled successfully")
+
+      setTimeout(() => setSuccessMessage(null), 3000)
+
+    } catch (err: any) {
+      const message =
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        err.message ||
+        "Cancel failed"
+
+      setErrorMessage(message)
+      setTimeout(() => setErrorMessage(null), 4000)
     }
   }
-  
+
+
+
+
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const token = localStorage.getItem("access_token")
-  
-        const res = await fetch(
-          "http://localhost:8000/admin/dashboard",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        )
-  
-        const data = await res.json()
-        setDashboard(data)
-  
+        const res = await api.get("/admin/dashboard")
+        setDashboard(res.data?.data ?? res.data)
       } catch (err) {
         console.error("Dashboard fetch failed", err)
       }
     }
-  
+
     fetchDashboard()
   }, [])
-  
+
+
+  const [filters, setFilters] = useState({
+    from_date: "",
+    to_date: "",
+    booking_source: "",
+    booking_type_id: "",
+    time_slot_id: "",
+    payment_received: "",
+    status: "",
+  })
+  const handleFilter = async () => {
+    try {
+      const cleanedFilters: any = {}
+
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== "" && value !== undefined && value !== null) {
+          if (key === "payment_received") {
+            cleanedFilters[key] = value === "true"
+          } else {
+            cleanedFilters[key] = value
+          }
+        }
+      })
+
+      const data = await filterBookings(cleanedFilters)
+
+      setBookings(Array.isArray(data) ? data : [])
+
+    } catch (err) {
+      console.error("Filter failed", err)
+    }
+  }
+
+
+
+  const handleExport = async () => {
+    try {
+      const cleanedFilters: any = {}
+
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== "" && value !== undefined && value !== null) {
+          cleanedFilters[key] =
+            key === "payment_received"
+              ? value === "true"
+              : value
+        }
+      })
+
+      const blob = await exportBookings("xlsx", cleanedFilters)
+
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = "bookings_export.xlsx"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+    } catch (err) {
+      console.error("Export failed", err)
+    }
+  }
+
+
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -393,22 +418,20 @@ const res = await fetch(
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
 
 
-        
-
-            <TabsList className="w-full overflow-x-auto flex-nowrap">
-              <TabsTrigger value="bookings" className="whitespace-nowrap">
-               Bookings
+          <TabsList className="w-full overflow-x-auto flex-nowrap">
+            <TabsTrigger value="bookings" className="whitespace-nowrap">
+              Bookings
             </TabsTrigger>
             <TabsTrigger value="capacity" className="whitespace-nowrap">
-                Capacity
-           </TabsTrigger>
+              Capacity
+            </TabsTrigger>
             <TabsTrigger value="analytics" className="whitespace-nowrap">
-               Analytics
-          </TabsTrigger>
-           <TabsTrigger value="settings" className="whitespace-nowrap">
-               Settings
-        </TabsTrigger>
-           </TabsList>
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="whitespace-nowrap">
+              Settings
+            </TabsTrigger>
+          </TabsList>
 
 
 
@@ -421,14 +444,154 @@ const res = await fetch(
                     <CardDescription>Manage and view all customer bookings</CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm">
-                      <Filter className="mr-2 h-4 w-4" />
-                      Filter
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Download className="mr-2 h-4 w-4" />
-                      Export
-                    </Button>
+                    {/* <Button variant="outline" size="sm" onClick={handleFilter}>
+                     <Filter className="mr-2 h-4 w-4" />
+                        Filter
+                  </Button>
+
+                  <Button variant="outline" size="sm" onClick={handleExport}>
+                     <Download className="mr-2 h-4 w-4" />
+                        Export
+                  </Button> */}
+
+                    {/* FILTER SECTION */}
+                    <div className="mb-6 bg-card border rounded-2xl p-5 shadow-sm">
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">From Date</Label>
+                          <Input
+                            type="date"
+                            value={filters.from_date}
+                            onChange={(e) =>
+                              setFilters({ ...filters, from_date: e.target.value })
+                            }
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">To Date</Label>
+                          <Input
+                            type="date"
+                            value={filters.to_date}
+                            onChange={(e) =>
+                              setFilters({ ...filters, to_date: e.target.value })
+                            }
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Status</Label>
+                          <Select
+                            value={filters.status}
+                            onValueChange={(value) =>
+                              setFilters({ ...filters, status: value })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="confirmed">Confirmed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Payment</Label>
+                          <Select
+                            value={filters.payment_received}
+                            onValueChange={(value) =>
+                              setFilters({ ...filters, payment_received: value })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Payment status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="true">Paid</SelectItem>
+                              <SelectItem value="false">Unpaid</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Booking Source</Label>
+                          <Select
+                            value={filters.booking_source}
+                            onValueChange={(value) =>
+                              setFilters({ ...filters, booking_source: value })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Source" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="online">Online</SelectItem>
+                              <SelectItem value="walkin">Walk-in</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Booking Type</Label>
+                          <Select
+                            value={filters.booking_type_id}
+                            onValueChange={(value) =>
+                              setFilters({ ...filters, booking_type_id: value })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {bookingTypes.map((type) => (
+                                <SelectItem key={type.id} value={type.id}>
+                                  {type.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-3 mt-5 sm:justify-end">
+                        <Button size="sm" onClick={handleFilter}>
+                          <Filter className="mr-2 h-4 w-4" />
+                          Apply
+                        </Button>
+
+                        <Button size="sm" variant="outline" onClick={handleExport}>
+                          <Download className="mr-2 h-4 w-4" />
+                          Export
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setFilters({
+                              from_date: "",
+                              to_date: "",
+                              booking_source: "",
+                              booking_type_id: "",
+                              time_slot_id: "",
+                              payment_received: "",
+                              status: "",
+                            })
+                          }
+                        >
+                          Reset
+                        </Button>
+                      </div>
+
+                    </div>
+
+
+
                     <Button size="sm" onClick={() => setIsCreateBookingOpen(true)}>
                       <Calendar className="mr-2 h-4 w-4" />
                       New Booking
@@ -437,6 +600,17 @@ const res = await fetch(
                 </div>
               </CardHeader>
               <CardContent>
+                {successMessage && (
+                  <div className="mb-4 p-3 rounded-lg bg-green-100 text-green-700 text-sm font-medium">
+                    {successMessage}
+                  </div>
+                )}
+                {errorMessage && (
+                  <div className="mb-4 p-3 rounded-lg bg-red-100 text-red-700 text-sm font-medium">
+                    {errorMessage}
+                  </div>
+                )}
+
                 {/* <div className="space-y-4">
                   {bookings.map((booking) => (
                     <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -475,55 +649,60 @@ const res = await fetch(
                   ))}
                 </div> */}
                 <div className="space-y-4">
-                     {loadingBookings ? (
-              <div className="text-center py-10 text-muted-foreground">
-                 Loading bookings...
-                </div>
+                  {loadingBookings ? (
+                    <div className="text-center py-10 text-muted-foreground">
+                      Loading bookings...
+                    </div>
                   ) : (
                     bookings.map((booking) => (
-                <div
-                 key={booking.id}
-                    className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between p-4 border rounded-lg w-full"
-        >
-                  {/* LEFT */}
-             <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Calendar className="h-6 w-6 text-primary" />
-               </div>
-
-                <div>
-                  <div className="font-semibold">{booking.contact_name}</div>
-                    <div className="text-sm text-muted-foreground">
-                       {new Date(booking.visit_date).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                           month: "short",
-                           year: "numeric",
-                        })}
-                           {" • "}
-                            {booking.time_slots.start_time} - {booking.time_slots.end_time}
-                   </div>
-                       <div className="text-sm text-muted-foreground">
-                         {booking.adults} Adults, {booking.children} Children
+                      <div
+                        //  key={booking.id}
+                        key={booking.id ?? `${booking.contact_name}-${booking.visit_date}`}
+                        className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between p-4 border rounded-lg w-full"
+                      >
+                        {/* LEFT */}
+                        <div className="flex items-center gap-4">
+                          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Calendar className="h-6 w-6 text-primary" />
                           </div>
+
+                          <div>
+                            <div className="font-semibold">{booking.contact_name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(booking.visit_date).toLocaleDateString("en-GB", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                              {" • "}
+                              {/* {booking.time_slots.start_time} - {booking.time_slots.end_time} */}
+                              {booking.time_slots?.start_time && booking.time_slots?.end_time
+                                ? `${booking.time_slots.start_time} - ${booking.time_slots.end_time}`
+                                : "Time slot not available"}
+
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {booking.adults} Adults, {booking.children} Children
+                            </div>
+                          </div>
+                        </div>
+                        {/* RIGHT */}
+                        <div className="flex flex-col gap-2 md:items-end w-full md:w-auto">
+                          <div className="font-semibold text-primary">
+                            ₹{booking.total_amount}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fetchBookingDetails(booking.id)}
+                          >
+                            View Details
+                          </Button>
+                        </div>
                       </div>
-                  </div>
-           {/* RIGHT */}
-                 <div className="flex flex-col gap-2 md:items-end w-full md:w-auto">
-                    <div className="font-semibold text-primary">
-                       ₹{booking.total_amount}
-               </div>
-                    <Button
-                       variant="outline"
-                       size="sm"
-                       onClick={() => fetchBookingDetails(booking.id)}
-               >
-                     View Details
-                 </Button>
-              </div>
-          </div>
-          ))
-         )}
-    </div>
+                    ))
+                  )}
+                </div>
 
               </CardContent>
             </Card>
@@ -792,156 +971,156 @@ const res = await fetch(
           </DialogHeader>
 
           {!loadingDetails && viewBooking && (
-          <div className="space-y-8">
+            <div className="space-y-8">
 
-          {/* CUSTOMER INFO */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Customer Information
-            </h3>
-        
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/40 rounded-xl">
+              {/* CUSTOMER INFO */}
               <div>
-                <p className="text-sm text-muted-foreground">Name</p>
-                <p className="font-medium">{viewBooking.contact_name}</p>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Customer Information
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/40 rounded-xl">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="font-medium">{viewBooking.contact_name}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="font-medium break-all">
+                      {viewBooking.contact_email}
+                    </p>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <p className="text-sm text-muted-foreground">Phone</p>
+                    <p className="font-medium">
+                      {viewBooking.contact_phone}
+                    </p>
+                  </div>
+                </div>
               </div>
-        
+
+
+              {/* BOOKING INFO */}
               <div>
-                <p className="text-sm text-muted-foreground">Email</p>
-                <p className="font-medium break-all">
-                  {viewBooking.contact_email}
-                </p>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Booking Details
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/40 rounded-xl">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Booking Type</p>
+                    <p className="font-medium capitalize">
+                      {viewBooking.booking_types?.name}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">Date</p>
+                    <p className="font-medium">
+                      {new Date(viewBooking.visit_date).toLocaleDateString("en-GB", {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">Time Slot</p>
+                    <p className="font-medium">
+                      {viewBooking.time_slots?.start_time} - {viewBooking.time_slots?.end_time}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">Guests</p>
+                    <p className="font-medium">
+                      {viewBooking.adults} Adults, {viewBooking.children} Children
+                    </p>
+                  </div>
+                </div>
               </div>
-        
-              <div className="sm:col-span-2">
-                <p className="text-sm text-muted-foreground">Phone</p>
-                <p className="font-medium">
-                  {viewBooking.contact_phone}
-                </p>
-              </div>
-            </div>
-          </div>
-        
-        
-          {/* BOOKING INFO */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Booking Details
-            </h3>
-        
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/40 rounded-xl">
+
+
+              {/* PAYMENT */}
               <div>
-                <p className="text-sm text-muted-foreground">Booking Type</p>
-                <p className="font-medium capitalize">
-                  {viewBooking.booking_types?.name}
-                </p>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Payment Information
+                </h3>
+
+                <div className="p-4 bg-muted/40 rounded-xl space-y-4">
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Total Amount</span>
+                    <span className="text-xl font-bold text-primary">
+                      ₹{viewBooking.total_amount}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Payment Status</span>
+                    <Badge
+                      variant={
+                        viewBooking.payment_status === "paid"
+                          ? "default"
+                          : "outline"
+                      }
+                    >
+                      {viewBooking.payment_status}
+                    </Badge>
+                  </div>
+
+                </div>
               </div>
-        
-              <div>
-                <p className="text-sm text-muted-foreground">Date</p>
-                <p className="font-medium">
-                  {new Date(viewBooking.visit_date).toLocaleDateString("en-GB", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </p>
-              </div>
-        
-              <div>
-                <p className="text-sm text-muted-foreground">Time Slot</p>
-                <p className="font-medium">
-                  {viewBooking.time_slots?.start_time} - {viewBooking.time_slots?.end_time}
-                </p>
-              </div>
-        
-              <div>
-                <p className="text-sm text-muted-foreground">Guests</p>
-                <p className="font-medium">
-                  {viewBooking.adults} Adults, {viewBooking.children} Children
-                </p>
-              </div>
-            </div>
-          </div>
-        
-        
-          {/* PAYMENT */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              Payment Information
-            </h3>
-        
-            <div className="p-4 bg-muted/40 rounded-xl space-y-4">
-        
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Total Amount</span>
-                <span className="text-xl font-bold text-primary">
-                  ₹{viewBooking.total_amount}
-                </span>
-              </div>
-        
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Payment Status</span>
-                <Badge
-                  variant={
-                    viewBooking.payment_status === "paid"
-                      ? "default"
-                      : "outline"
-                  }
-                >
-                  {viewBooking.payment_status}
-                </Badge>
-              </div>
-        
-            </div>
-          </div>
-        
-        
-          {/* NOTES */}
-          {viewBooking.notes && (
-            <div>
-              <h3 className="text-lg font-semibold mb-3">
-                Special Notes
-              </h3>
-        
-              <div className="p-4 bg-muted/40 rounded-xl">
-                <p className="text-sm">
-                  {viewBooking.notes}
-                </p>
-              </div>
-            </div>
-          )}
-        
-        
-          {/* ACTION BUTTONS */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-            <Button variant="outline" className="flex-1">
-              Edit Booking
-            </Button>
-        
-            <Button variant="outline" className="flex-1">
-              Send Confirmation
-            </Button>
-        
-            {/* <Button variant="destructive" className="flex-1">
+
+
+              {/* NOTES */}
+              {viewBooking.notes && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">
+                    Special Notes
+                  </h3>
+
+                  <div className="p-4 bg-muted/40 rounded-xl">
+                    <p className="text-sm">
+                      {viewBooking.notes}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+
+              {/* ACTION BUTTONS */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+                <Button variant="outline" className="flex-1">
+                  Edit Booking
+                </Button>
+
+                <Button variant="outline" className="flex-1">
+                  Send Confirmation
+                </Button>
+
+                {/* <Button variant="destructive" className="flex-1">
               Cancel Booking
             </Button> */}
-            <Button
-                variant="destructive"
-                className="flex-1"
-                onClick={() => handleAdminCancel(viewBooking.id)}
-               >
-                Cancel Booking
-            </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => handleAdminCancel(viewBooking.id)}
+                >
+                  Cancel Booking
+                </Button>
 
-          </div>
-        
-        </div>
-        
+              </div>
+
+            </div>
+
           )}
         </DialogContent>
       </Dialog>
@@ -998,28 +1177,27 @@ const res = await fetch(
                     onValueChange={(value) => setNewBooking({ ...newBooking, bookingType: value })}
                   > */}
                   <Select
-                  value={newBooking.bookingType}
-                     onValueChange={async (value) => {
-                setNewBooking({ ...newBooking, bookingType: value, timeSlot: "" })
+                    value={newBooking.bookingType}
+                    onValueChange={async (value) => {
+                      setNewBooking(prev => ({
+                        ...prev,
+                        bookingType: value,
+                        timeSlot: ""
+                      }))
+                      try {
+                        const res = await api.get(`/time-slots/${value}`)
 
-                     try {
-                  const res = await fetch(`http://localhost:8000/time-slots/${value}`)
-                     const data = await res.json()
-
-                    if (Array.isArray(data)) {
+                        const data = Array.isArray(res.data)
+                          ? res.data
+                          : res.data?.data || []
                         setTimeSlots(data)
-                      } else if (Array.isArray(data?.data)) {
-                            setTimeSlots(data.data)
-                 } else {
-                         setTimeSlots([])
-                    }
+                      } catch (err) {
+                        console.error("Time slots fetch failed", err)
+                        setTimeSlots([])
+                      }
+                    }}
+                  >
 
-                   } catch (err) {
-                    console.error("Time slots fetch failed", err)
-                    setTimeSlots([])
-                 }
-                }}
-               >  
                     <SelectTrigger id="bookingType">
                       <SelectValue placeholder="Select booking type" />
                     </SelectTrigger>
@@ -1058,10 +1236,10 @@ const res = await fetch(
                         </SelectItem>
                       ))} */}
                       {timeSlots.map((slot) => (
-                       <SelectItem key={slot.id} value={slot.id}>
-                              {slot.slot_name} ({slot.start_time} - {slot.end_time})
-                       </SelectItem>
-                          ))}
+                        <SelectItem key={slot.id} value={slot.id}>
+                          {slot.slot_name} ({slot.start_time} - {slot.end_time})
+                        </SelectItem>
+                      ))}
 
                     </SelectContent>
                   </Select>
@@ -1096,52 +1274,52 @@ const res = await fetch(
             </div>
 
             {addOns.length > 0 && (
-  <div className="space-y-4">
-    <h3 className="font-semibold">Enhance Experience</h3>
+              <div className="space-y-4">
+                <h3 className="font-semibold">Enhance Experience</h3>
 
-    <div className="space-y-3">
-      {addOns.map((addOn) => (
-        <div
-          key={addOn.id}
-          className="flex items-start gap-3 p-3 rounded-lg border"
-        >
-          <Checkbox
-            id={`admin-addon-${addOn.id}`}
-            checked={selectedAddOns.includes(addOn.id)}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                setSelectedAddOns([...selectedAddOns, addOn.id])
-              } else {
-                setSelectedAddOns(
-                  selectedAddOns.filter((id) => id !== addOn.id)
-                )
-              }
-            }}
-          />
+                <div className="space-y-3">
+                  {addOns.map((addOn) => (
+                    <div
+                      key={addOn.id}
+                      className="flex items-start gap-3 p-3 rounded-lg border"
+                    >
+                      <Checkbox
+                        id={`admin-addon-${addOn.id}`}
+                        checked={selectedAddOns.includes(addOn.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedAddOns([...selectedAddOns, addOn.id])
+                          } else {
+                            setSelectedAddOns(
+                              selectedAddOns.filter((id) => id !== addOn.id)
+                            )
+                          }
+                        }}
+                      />
 
-          <div className="flex-1">
-            <Label
-              htmlFor={`admin-addon-${addOn.id}`}
-              className="font-medium cursor-pointer"
-            >
-              {addOn.name}
-            </Label>
+                      <div className="flex-1">
+                        <Label
+                          htmlFor={`admin-addon-${addOn.id}`}
+                          className="font-medium cursor-pointer"
+                        >
+                          {addOn.name}
+                        </Label>
 
-            {addOn.description && (
-              <p className="text-sm text-muted-foreground">
-                {addOn.description}
-              </p>
+                        {addOn.description && (
+                          <p className="text-sm text-muted-foreground">
+                            {addOn.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="font-semibold text-primary">
+                        ₹{addOn.price}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
-          </div>
-
-          <div className="font-semibold text-primary">
-            ₹{addOn.price}
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
 
 
             <div className="space-y-4">
