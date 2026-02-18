@@ -1,6 +1,7 @@
 "use client"
 // import { availabilityData, analyticsData, bookingTypes, timeSlots } from "@/lib/sample-data"
-import { availabilityData, analyticsData } from "@/lib/sample-data"
+// import { availabilityData, analyticsData } from "@/lib/sample-data"
+import { analyticsData } from "@/lib/sample-data"
 // import  Navbar  from "@/components/navbar"
 import { useEffect } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -95,6 +96,10 @@ export default function AdminPage() {
     fetchAdminBookings()
   }, [])
 
+  const [capacityData, setCapacityData] = useState<any[]>([])
+  const [selectedSlot, setSelectedSlot] = useState<any>(null)
+  const [newCapacity, setNewCapacity] = useState<number>(0)
+  const [isAdjustOpen, setIsAdjustOpen] = useState(false)
 
   const [bookings, setBookings] = useState<any[]>([])
   const [loadingBookings, setLoadingBookings] = useState(true)
@@ -347,7 +352,25 @@ export default function AdminPage() {
     }
   }
 
-
+  useEffect(() => {
+    const fetchCapacity = async () => {
+      try {
+        const res = await api.get("/admin/capacity")
+  
+        const data = Array.isArray(res.data)
+          ? res.data
+          : res.data?.data || []
+  
+        setCapacityData(data)
+      } catch (err) {
+        console.error("Capacity fetch failed", err)
+        setCapacityData([])
+      }
+    }
+  
+    fetchCapacity()
+  }, [])
+  
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -716,45 +739,70 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {availabilityData.map((item, idx) => (
-                    <div key={idx} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <div className="font-semibold">
-                            {new Date(item.date).toLocaleDateString("en-GB", {
-                              weekday: "long",
-                              month: "long",
-                              day: "numeric",
-                            })}
-                          </div>
-                          <div className="text-sm text-muted-foreground capitalize">
-                            {item.slot.replace("-", " ")} slot
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className="text-sm text-muted-foreground">Available</div>
-                            <div className="font-semibold text-primary">
-                              {item.available} / {item.available + item.booked}
-                            </div>
-                          </div>
-                          <Button variant="outline" size="sm">
-                            Adjust
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${(item.booked / (item.available + item.booked)) * 100}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                        <span>{item.booked} booked</span>
-                        <span>{Math.round((item.booked / (item.available + item.booked)) * 100)}% capacity</span>
-                      </div>
-                    </div>
-                  ))}
+                {capacityData.map((bt) => (
+  <div key={bt.booking_type_id} className="space-y-4">
+
+    {/* Booking Type Title */}
+    <div className="text-lg font-semibold border-b pb-2">
+      {bt.booking_type_name}
+    </div>
+
+    {/* Slots */}
+    {bt.slots.map((slot) => {
+      const total = Number(slot.capacity || 0)
+      const booked = Number(slot.booked || 0)
+      const available = total - booked
+      const percent = total > 0 ? (booked / total) * 100 : 0
+
+      return (
+        <div key={slot.slot_id} className="p-4 border rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="font-medium">
+                {slot.slot_name}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <div className="text-sm text-muted-foreground">Available</div>
+                <div className="font-semibold text-primary">
+                  {available} / {total}
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedSlot(slot)
+                  setNewCapacity(total)
+                  setIsAdjustOpen(true)
+                }}
+              >
+                Adjust
+              </Button>
+            </div>
+          </div>
+
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+
+          <div className="flex justify-between text-xs text-muted-foreground mt-2">
+            <span>{booked} booked</span>
+            <span>{Math.round(percent)}% capacity</span>
+          </div>
+        </div>
+      )
+    })}
+  </div>
+))}
+
+
                 </div>
               </CardContent>
             </Card>
@@ -959,7 +1007,7 @@ export default function AdminPage() {
       </div>
 
       <Dialog open={loadingDetails || !!viewBooking} onOpenChange={(open) => !open && setViewBooking(null)}>
-        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl">
+      <DialogContent className="w-[95%] sm:max-w-lg md:max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Booking Details</span>
@@ -971,16 +1019,16 @@ export default function AdminPage() {
           </DialogHeader>
 
           {!loadingDetails && viewBooking && (
-            <div className="space-y-8">
+            <div className="space-y-5">
 
               {/* CUSTOMER INFO */}
               <div>
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <h3 className="text-base font-semibold mb-2 flex items-center gap-2">
                   <User className="h-4 w-4" />
                   Customer Information
                 </h3>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/40 rounded-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-muted/40 rounded-lg" >
                   <div>
                     <p className="text-sm text-muted-foreground">Name</p>
                     <p className="font-medium">{viewBooking.contact_name}</p>
@@ -1054,7 +1102,7 @@ export default function AdminPage() {
                   Payment Information
                 </h3>
 
-                <div className="p-4 bg-muted/40 rounded-xl space-y-4">
+                <div className="p-3 bg-muted/40 rounded-lg space-y-3">
 
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Total Amount</span>
@@ -1097,7 +1145,7 @@ export default function AdminPage() {
 
 
               {/* ACTION BUTTONS */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+              <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t">
                 <Button variant="outline" className="flex-1">
                   Edit Booking
                 </Button>
@@ -1381,6 +1429,60 @@ export default function AdminPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isAdjustOpen} onOpenChange={setIsAdjustOpen}>
+  <DialogContent className="max-w-md">
+    <DialogHeader>
+      <DialogTitle>Adjust Slot Capacity</DialogTitle>
+      <DialogDescription>
+        {selectedSlot?.slot_name}
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="space-y-4">
+      <div>
+        <Label>Current Capacity</Label>
+        <Input value={selectedSlot?.capacity} disabled />
+      </div>
+
+      <div>
+        <Label>New Capacity</Label>
+        <Input
+          type="number"
+          min={selectedSlot?.booked || 0}
+          value={newCapacity}
+          onChange={(e) => setNewCapacity(Number(e.target.value))}
+        />
+      </div>
+
+      <Button
+        onClick={async () => {
+          try {
+            await api.patch(
+              `/admin/time-slot/${selectedSlot.slot_id}/capacity`,
+              { capacity: newCapacity }
+            )
+            
+
+            const res = await api.get("/admin/capacity")
+            const data = Array.isArray(res.data)
+              ? res.data
+              : res.data?.data || []
+
+            setCapacityData(data)
+
+            setIsAdjustOpen(false)
+          } catch (err) {
+            alert("Capacity update failed")
+          }
+        }}
+      >
+        Save Changes
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
     </div>
   )
 }
