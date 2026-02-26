@@ -273,7 +273,38 @@ export default function AdminPage() {
     }
   }
 
+  const handleAdminConfirm = async (bookingId: string) => {
+    try {
+      setErrorMessage(null)
 
+      await api.post(`/admin/bookings/${bookingId}/confirm`)
+
+      // 🔥 Refresh booking list
+      const refreshed = await api.get("/admin/bookings")
+
+      const freshData = Array.isArray(refreshed.data)
+        ? refreshed.data
+        : refreshed.data?.data || []
+
+      setBookings(freshData)
+
+      // 🔥 Refresh modal details
+      await fetchBookingDetails(bookingId)
+
+      setSuccessMessage("Booking confirmed successfully")
+      setTimeout(() => setSuccessMessage(null), 3000)
+
+    } catch (err: any) {
+      const message =
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        err.message ||
+        "Confirmation failed"
+
+      setErrorMessage(message)
+      setTimeout(() => setErrorMessage(null), 4000)
+    }
+  }
 
 
   useEffect(() => {
@@ -356,21 +387,21 @@ export default function AdminPage() {
     const fetchCapacity = async () => {
       try {
         const res = await api.get("/admin/capacity")
-  
+
         const data = Array.isArray(res.data)
           ? res.data
           : res.data?.data || []
-  
+
         setCapacityData(data)
       } catch (err) {
         console.error("Capacity fetch failed", err)
         setCapacityData([])
       }
     }
-  
+
     fetchCapacity()
   }, [])
-  
+
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -739,68 +770,68 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                {capacityData.map((bt) => (
-  <div key={bt.booking_type_id} className="space-y-4">
+                  {capacityData.map((bt) => (
+                    <div key={bt.booking_type_id} className="space-y-4">
 
-    {/* Booking Type Title */}
-    <div className="text-lg font-semibold border-b pb-2">
-      {bt.booking_type_name}
-    </div>
+                      {/* Booking Type Title */}
+                      <div className="text-lg font-semibold border-b pb-2">
+                        {bt.booking_type_name}
+                      </div>
 
-    {/* Slots */}
-    {bt.slots.map((slot) => {
-      const total = Number(slot.capacity || 0)
-      const booked = Number(slot.booked || 0)
-      const available = total - booked
-      const percent = total > 0 ? (booked / total) * 100 : 0
+                      {/* Slots */}
+                      {bt.slots.map((slot) => {
+                        const total = Number(slot.capacity || 0)
+                        const booked = Number(slot.booked || 0)
+                        const available = total - booked
+                        const percent = total > 0 ? (booked / total) * 100 : 0
 
-      return (
-        <div key={slot.slot_id} className="p-4 border rounded-lg">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <div className="font-medium">
-                {slot.slot_name}
-              </div>
-            </div>
+                        return (
+                          <div key={slot.slot_id} className="p-4 border rounded-lg">
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <div className="font-medium">
+                                  {slot.slot_name}
+                                </div>
+                              </div>
 
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-sm text-muted-foreground">Available</div>
-                <div className="font-semibold text-primary">
-                  {available} / {total}
-                </div>
-              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                  <div className="text-sm text-muted-foreground">Available</div>
+                                  <div className="font-semibold text-primary">
+                                    {available} / {total}
+                                  </div>
+                                </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelectedSlot(slot)
-                  setNewCapacity(total)
-                  setIsAdjustOpen(true)
-                }}
-              >
-                Adjust
-              </Button>
-            </div>
-          </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedSlot(slot)
+                                    setNewCapacity(total)
+                                    setIsAdjustOpen(true)
+                                  }}
+                                >
+                                  Adjust
+                                </Button>
+                              </div>
+                            </div>
 
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary"
-              style={{ width: `${percent}%` }}
-            />
-          </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary"
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
 
-          <div className="flex justify-between text-xs text-muted-foreground mt-2">
-            <span>{booked} booked</span>
-            <span>{Math.round(percent)}% capacity</span>
-          </div>
-        </div>
-      )
-    })}
-  </div>
-))}
+                            <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                              <span>{booked} booked</span>
+                              <span>{Math.round(percent)}% capacity</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
 
 
                 </div>
@@ -1007,7 +1038,7 @@ export default function AdminPage() {
       </div>
 
       <Dialog open={loadingDetails || !!viewBooking} onOpenChange={(open) => !open && setViewBooking(null)}>
-      <DialogContent className="w-[95%] sm:max-w-lg md:max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl">
+        <DialogContent className="w-[95%] sm:max-w-lg md:max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Booking Details</span>
@@ -1023,7 +1054,7 @@ export default function AdminPage() {
 
               {/* CUSTOMER INFO */}
               <div>
-              <h3 className="text-base font-semibold mb-2 flex items-center gap-2">
+                <h3 className="text-base font-semibold mb-2 flex items-center gap-2">
                   <User className="h-4 w-4" />
                   Customer Information
                 </h3>
@@ -1150,9 +1181,18 @@ export default function AdminPage() {
                   Edit Booking
                 </Button>
 
-                <Button variant="outline" className="flex-1">
+                {/* <Button variant="outline" className="flex-1">
                   Send Confirmation
-                </Button>
+                </Button> */}
+                {viewBooking?.status === "pending" && (
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => handleAdminConfirm(viewBooking.id)}
+                  >
+                    Send Confirmation
+                  </Button>
+                )}
 
                 {/* <Button variant="destructive" className="flex-1">
               Cancel Booking
@@ -1431,57 +1471,57 @@ export default function AdminPage() {
       </Dialog>
 
       <Dialog open={isAdjustOpen} onOpenChange={setIsAdjustOpen}>
-  <DialogContent className="max-w-md">
-    <DialogHeader>
-      <DialogTitle>Adjust Slot Capacity</DialogTitle>
-      <DialogDescription>
-        {selectedSlot?.slot_name}
-      </DialogDescription>
-    </DialogHeader>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adjust Slot Capacity</DialogTitle>
+            <DialogDescription>
+              {selectedSlot?.slot_name}
+            </DialogDescription>
+          </DialogHeader>
 
-    <div className="space-y-4">
-      <div>
-        <Label>Current Capacity</Label>
-        <Input value={selectedSlot?.capacity} disabled />
-      </div>
+          <div className="space-y-4">
+            <div>
+              <Label>Current Capacity</Label>
+              <Input value={selectedSlot?.capacity} disabled />
+            </div>
 
-      <div>
-        <Label>New Capacity</Label>
-        <Input
-          type="number"
-          min={selectedSlot?.booked || 0}
-          value={newCapacity}
-          onChange={(e) => setNewCapacity(Number(e.target.value))}
-        />
-      </div>
+            <div>
+              <Label>New Capacity</Label>
+              <Input
+                type="number"
+                min={selectedSlot?.booked || 0}
+                value={newCapacity}
+                onChange={(e) => setNewCapacity(Number(e.target.value))}
+              />
+            </div>
 
-      <Button
-        onClick={async () => {
-          try {
-            await api.patch(
-              `/admin/time-slot/${selectedSlot.slot_id}/capacity`,
-              { capacity: newCapacity }
-            )
-            
+            <Button
+              onClick={async () => {
+                try {
+                  await api.patch(
+                    `/admin/time-slot/${selectedSlot.slot_id}/capacity`,
+                    { capacity: newCapacity }
+                  )
 
-            const res = await api.get("/admin/capacity")
-            const data = Array.isArray(res.data)
-              ? res.data
-              : res.data?.data || []
 
-            setCapacityData(data)
+                  const res = await api.get("/admin/capacity")
+                  const data = Array.isArray(res.data)
+                    ? res.data
+                    : res.data?.data || []
 
-            setIsAdjustOpen(false)
-          } catch (err) {
-            alert("Capacity update failed")
-          }
-        }}
-      >
-        Save Changes
-      </Button>
-    </div>
-  </DialogContent>
-</Dialog>
+                  setCapacityData(data)
+
+                  setIsAdjustOpen(false)
+                } catch (err) {
+                  alert("Capacity update failed")
+                }
+              }}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   )
