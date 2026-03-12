@@ -19,7 +19,7 @@ import { getBookingTypes } from "@/src/services/booking.services"
 // import { createBooking } from "@/src/services/bookingCreate.services"
 // import { api } from "@/src/services/api"
 
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createBooking } from "@/src/services/bookingCreate.services"
 
 
@@ -32,7 +32,8 @@ import { getTimeSlotsByBookingType } from "@/src/services/booking.services"
 
 export default function BookingPage() {
   const router = useRouter()
-
+  const searchParams = useSearchParams()
+  const typeFromUrl = searchParams.get("type")
   const [availableSlots, setAvailableSlots] = useState<any[]>([])
   const [addOns, setAddOns] = useState<any[]>([])
 
@@ -61,9 +62,19 @@ export default function BookingPage() {
 
   useEffect(() => {
     getBookingTypes().then((data) => {
-      setBookingTypes(Array.isArray(data) ? data : [])
+      const list = Array.isArray(data) ? data : []
+      setBookingTypes(list)
+  
+      // 🔥 URL madhe type asel tar auto select
+      if (typeFromUrl) {
+        const exists = list.find((t: any) => t.id === typeFromUrl)
+        if (exists && exists.is_active !== false) {
+          setSelectedType(typeFromUrl)
+        }
+      }
     })
-  }, [])
+  }, [typeFromUrl])
+  
   useEffect(() => {
     console.log("visitDate =", visitDate)
   }, [visitDate])
